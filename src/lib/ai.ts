@@ -61,17 +61,23 @@ export async function extractPartsFromScreenshot(
   const data = await response.json();
   const content = data?.choices?.[0]?.message?.content as string | undefined;
 
-  console.log(`[PartsIQ AI] model=${CONFIG.OPENROUTER_MODEL} time=${Date.now() - startTime}ms`);
-
   if (!content) {
     return [];
   }
+
+  console.log(`[PartsIQ AI] model=${CONFIG.OPENROUTER_MODEL} time=${Date.now() - startTime}ms`);
 
   try {
     const parsed = JSON.parse(content);
     if (!Array.isArray(parsed)) return [];
     console.log(`[PartsIQ AI] parts=${parsed.length}`);
-    return parsed as PartData[];
+    return parsed.filter(
+      (item: unknown): item is PartData =>
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).partName === 'string' &&
+        typeof (item as Record<string, unknown>).oemNumber === 'string'
+    );
   } catch {
     console.error('[PartsIQ AI] Failed to parse response as JSON:', content);
     return [];

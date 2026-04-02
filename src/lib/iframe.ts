@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { BubbleMessage } from '@types/parts';
 import { CONFIG } from '@lib/constants';
 
@@ -34,12 +34,15 @@ export function sendToIframe(
 export function useBubbleMessages(
   onMessage: (msg: BubbleMessage) => void
 ): void {
+  const onMessageRef = useRef(onMessage);
+  onMessageRef.current = onMessage;
+
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== CONFIG.BUBBLE_BASE_URL) return;
-      onMessage(event.data as BubbleMessage);
+      onMessageRef.current(event.data as BubbleMessage);
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [onMessage]);
+  }, []); // empty deps — handler always uses latest ref
 }
