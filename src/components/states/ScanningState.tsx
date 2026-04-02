@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import StatusChip from '@components/StatusChip';
 import { captureScreenshot } from '@lib/screenshot';
 import { extractPartsFromScreenshot } from '@lib/ai';
@@ -13,13 +13,17 @@ interface Props {
 const ScanningState = ({ session, onFound, onNotFound }: Props) => {
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const cancelledRef = useRef(false);
 
   const runScan = async () => {
+    cancelledRef.current = false;
     setError(null);
     try {
       const base64 = await captureScreenshot();
+      if (cancelledRef.current) return;
       setScreenshot(base64);
       const parts = await extractPartsFromScreenshot(base64);
+      if (cancelledRef.current) return;
       if (parts.length > 0) {
         onFound(parts);
       } else {
@@ -31,7 +35,11 @@ const ScanningState = ({ session, onFound, onNotFound }: Props) => {
   };
 
   useEffect(() => {
+    cancelledRef.current = false;
     runScan();
+    return () => {
+      cancelledRef.current = true;
+    };
   }, []); // Run once on mount
 
   if (error) {

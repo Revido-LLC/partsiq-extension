@@ -29,7 +29,7 @@ const ConfirmState = ({ savedCount, session, onClose, onMore }: Props) => {
         </p>
         <p className="text-xs text-gray-500 mt-0.5">Added to session:</p>
         <div className="mt-2">
-          <SessionBadge session={{ ...session, partCount: session.partCount }} />
+          <SessionBadge session={session} />
         </div>
       </div>
 

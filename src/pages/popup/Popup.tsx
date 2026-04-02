@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PopupLayout from '@components/PopupLayout';
 import LoginState from '@components/states/LoginState';
 import IdleState from '@components/states/IdleState';
@@ -19,6 +19,9 @@ const Popup = () => {
   const [savedCount, setSavedCount] = useState(0);
   const [urlChanged, setUrlChanged] = useState(false);
 
+  const popupStateRef = useRef(popupState);
+  popupStateRef.current = popupState;
+
   // Initialize auth + session on mount
   useEffect(() => {
     Promise.all([getAuthStatus(), getActiveSession()]).then(([loggedIn, activeSession]) => {
@@ -30,13 +33,13 @@ const Popup = () => {
   // Listen for URL change notifications from background/content script
   useEffect(() => {
     const listener = (msg: { type: string }) => {
-      if (msg.type === 'page_url_changed' && popupState === 'idle') {
+      if (msg.type === 'page_url_changed' && popupStateRef.current === 'idle') {
         setUrlChanged(true);
       }
     };
     chrome.runtime.onMessage.addListener(listener);
     return () => chrome.runtime.onMessage.removeListener(listener);
-  }, [popupState]);
+  }, []); // registers once, reads latest state via ref
 
   // Show loading while checking auth
   if (isLoggedIn === null) {
@@ -60,7 +63,7 @@ const Popup = () => {
 
   // Show API key setup if key is missing (handled by IdleState settings gear)
   // Main state machine
-  const iframeStates: PopupState[] = ['login', 'session_select', 'iframe'];
+  const iframeStates: PopupState[] = ['session_select', 'iframe'];
   const compact = iframeStates.includes(popupState);
 
   switch (popupState) {
@@ -111,6 +114,7 @@ const Popup = () => {
             session={session!}
             onSaved={(count) => {
               setSavedCount(count);
+              setSession((prev) => prev ? { ...prev, partCount: prev.partCount + count } : prev);
               setPopupState('confirm');
             }}
           />

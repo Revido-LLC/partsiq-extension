@@ -5,7 +5,7 @@ import { setAuthStatus } from '@lib/storage';
 import type { BubbleMessage, LoginSuccessMessage } from '@types/parts';
 
 interface Props {
-  onSuccess: (userId: string) => void;
+  onSuccess: () => void;
 }
 
 const LoginState = ({ onSuccess }: Props) => {
@@ -15,7 +15,7 @@ const LoginState = ({ onSuccess }: Props) => {
     if (msg.type === 'partsiq:login_success') {
       const loginMsg = msg as LoginSuccessMessage;
       await setAuthStatus(true);
-      onSuccess(loginMsg.userId);
+      onSuccess();
     } else if (msg.type === 'partsiq:login_failed') {
       setError('Login failed. Please try again.');
     }

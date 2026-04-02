@@ -28,7 +28,7 @@ const IframeState = ({ parts, session, onSaved }: Props) => {
       sendToIframe(iframeRef.current, { type: 'partsiq:set_parts', parts });
       sendToIframe(iframeRef.current, { type: 'partsiq:set_session', sessionId: session.id });
     }
-  }, [iframeReady]);
+  }, [iframeReady, usePostMessage, parts, session.id]);
 
   const handleMessage = async (msg: BubbleMessage) => {
     if (msg.type === 'partsiq:ready') {
