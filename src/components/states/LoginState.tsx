@@ -29,7 +29,7 @@ const LoginState = ({ onSuccess }: Props) => {
         </div>
       )}
       <BubbleIframe
-        src={buildBubbleUrl('login')}
+        src={buildBubbleUrl('login', { source: 'extension' })}
         onMessage={handleMessage}
         height="460px"
       />

@@ -24,7 +24,8 @@ export function sendToIframe(
   iframe: HTMLIFrameElement,
   message: { type: string; [key: string]: unknown }
 ): void {
-  iframe.contentWindow?.postMessage(message, CONFIG.BUBBLE_BASE_URL);
+  const origin = new URL(CONFIG.BUBBLE_BASE_URL).origin;
+  iframe.contentWindow?.postMessage(message, origin);
 }
 
 /**
@@ -38,8 +39,9 @@ export function useBubbleMessages(
   onMessageRef.current = onMessage;
 
   useEffect(() => {
+    const bubbleOrigin = new URL(CONFIG.BUBBLE_BASE_URL).origin;
     const handler = (event: MessageEvent) => {
-      if (event.origin !== CONFIG.BUBBLE_BASE_URL) return;
+      if (event.origin !== bubbleOrigin) return;
       onMessageRef.current(event.data as BubbleMessage);
     };
     window.addEventListener('message', handler);

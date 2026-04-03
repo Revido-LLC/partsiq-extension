@@ -5,7 +5,7 @@ interface Props {
 
 const PopupLayout = ({ children, compact = false }: Props) => {
   return (
-    <div style={{ width: '400px', minHeight: '500px' }} className="flex flex-col bg-white">
+    <div style={{ width: '468px', minHeight: '650px' }} className="flex flex-col bg-white">
       {/* Header */}
       <div className={`flex items-center px-4 bg-white border-b border-gray-100 flex-shrink-0 ${compact ? 'h-10' : 'h-14'}`}>
         <span className="font-semibold text-gray-900 text-sm tracking-tight">PartsIQ</span>

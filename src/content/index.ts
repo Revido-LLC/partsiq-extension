@@ -1,3 +1,18 @@
+// Full-page capture helpers
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === 'get_page_info') {
+    sendResponse({
+      scrollHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+      currentScrollY: window.scrollY,
+    });
+  } else if (msg.type === 'scroll_to') {
+    window.scrollTo(0, msg.y as number);
+    setTimeout(() => sendResponse({ done: true }), 200);
+    return true;
+  }
+});
+
 let currentUrl = window.location.href;
 
 // Debounce to avoid flooding background on DOM-heavy SPAs

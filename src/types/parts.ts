@@ -21,6 +21,7 @@ export type PopupState =
   | 'idle'
   | 'session_select'
   | 'scanning'
+  | 'results'
   | 'iframe'
   | 'fallback'
   | 'confirm';

@@ -1,6 +1,5 @@
 import type { PartData } from '@types/parts';
 import { CONFIG } from '@lib/constants';
-import { getApiKey } from '@lib/storage';
 
 const EXTRACTION_PROMPT = `You are a parts data extractor for automotive suppliers. Analyze this screenshot of a supplier website and extract ALL parts visible on the page.
 
@@ -24,17 +23,12 @@ Rules:
 export async function extractPartsFromScreenshot(
   screenshotBase64: string
 ): Promise<PartData[]> {
-  const apiKey = await getApiKey();
-  if (!apiKey) {
-    throw new Error('OpenRouter API key not configured. Please add your API key in settings.');
-  }
-
   const startTime = Date.now();
 
   const response = await fetch(CONFIG.OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': CONFIG.BUBBLE_BASE_URL,
       'X-Title': 'PartsIQ Extension',
@@ -68,7 +62,8 @@ export async function extractPartsFromScreenshot(
   console.log(`[PartsIQ AI] model=${CONFIG.OPENROUTER_MODEL} time=${Date.now() - startTime}ms`);
 
   try {
-    const parsed = JSON.parse(content);
+    const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    const parsed = JSON.parse(cleaned);
     if (!Array.isArray(parsed)) return [];
     console.log(`[PartsIQ AI] parts=${parsed.length}`);
     return parsed.filter(

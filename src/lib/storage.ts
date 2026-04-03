@@ -19,11 +19,3 @@ export async function setActiveSession(session: Session | null): Promise<void> {
   await chrome.storage.local.set({ [CONFIG.STORAGE_KEYS.ACTIVE_SESSION]: session });
 }
 
-export async function getApiKey(): Promise<string | null> {
-  const result = await chrome.storage.local.get(CONFIG.STORAGE_KEYS.API_KEY);
-  return result[CONFIG.STORAGE_KEYS.API_KEY] ?? null;
-}
-
-export async function setApiKey(key: string): Promise<void> {
-  await chrome.storage.local.set({ [CONFIG.STORAGE_KEYS.API_KEY]: key });
-}

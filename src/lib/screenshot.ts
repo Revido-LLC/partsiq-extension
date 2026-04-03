@@ -6,7 +6,7 @@
 export async function captureScreenshot(): Promise<string> {
   const response = await chrome.runtime.sendMessage({ type: 'take_screenshot' });
   if (!response || !response.screenshot) {
-    throw new Error('Screenshot capture failed: no response from background service worker.');
+    throw new Error(response?.error ?? 'Screenshot capture failed: no response from background service worker.');
   }
   return response.screenshot as string;
 }

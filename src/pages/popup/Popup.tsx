@@ -4,6 +4,7 @@ import LoginState from '@components/states/LoginState';
 import IdleState from '@components/states/IdleState';
 import SessionState from '@components/states/SessionState';
 import ScanningState from '@components/states/ScanningState';
+import ResultsState from '@components/states/ResultsState';
 import IframeState from '@components/states/IframeState';
 import FallbackState from '@components/states/FallbackState';
 import ConfirmState from '@components/states/ConfirmState';
@@ -72,7 +73,13 @@ const Popup = () => {
         <PopupLayout compact={compact}>
           <IdleState
             session={session}
-            onCapture={() => setPopupState('session_select')}
+            onCapture={() => {
+      if (!session) {
+        const defaultSession = { id: 'default', name: 'Nova sessão', createdAt: new Date().toISOString(), partCount: 0 };
+        setSession(defaultSession);
+      }
+      setPopupState('scanning');
+    }}
             urlChanged={urlChanged}
             onDismissUrlChange={() => setUrlChanged(false)}
           />
@@ -99,9 +106,24 @@ const Popup = () => {
             session={session!}
             onFound={(p) => {
               setParts(p);
-              setPopupState('iframe');
+              setPopupState('results');
             }}
             onNotFound={() => setPopupState('fallback')}
+          />
+        </PopupLayout>
+      );
+
+    case 'results':
+      return (
+        <PopupLayout compact>
+          <ResultsState
+            parts={parts}
+            session={session!}
+            onConfirm={(selected) => {
+              setParts(selected);
+              setPopupState('iframe');
+            }}
+            onBack={() => setPopupState('idle')}
           />
         </PopupLayout>
       );
