@@ -21,6 +21,33 @@ Todo o código da extensão está implementado e buildando limpo (`yarn build:ch
 
 ---
 
+## Alterações recentes (sessão 2026-04-03)
+
+### Auth verificada via Bubble a cada abertura
+
+**Problema:** A verificação de login era feita apenas pelo flag local (`chrome.storage.local`). Se o usuário saísse do Bubble em outra aba, ou a sessão expirasse, o extension não detectava e seguia para o UI principal normalmente.
+
+**Correção:**
+- `Popup.tsx`: removido o atalho pelo flag local. O extension sempre começa deslogado e passa pelo `LoginState`.
+- `LoginState.tsx`: adicionada fase `'checking'` — carrega o iframe do Bubble `/auth/` em background e exibe um spinner. Quando Bubble responde:
+  - `partsiq:login_success` → vai direto ao UI principal (sem mostrar formulário)
+  - `partsiq:login_required` → exibe o formulário de login
+  - Sem resposta em 5s → exibe o formulário de login (fallback)
+- `types/parts.ts`: adicionado `partsiq:login_required` ao union type de `BubbleMessage`.
+
+**O que a página Bubble `/auth/` precisa fazer:**
+```javascript
+// No carregamento da página — verificar sessão ativa no Bubble
+// Se logado:
+window.parent.postMessage({ type: 'partsiq:login_success' }, '*')
+// Se não logado:
+window.parent.postMessage({ type: 'partsiq:login_required' }, '*')
+// Após login bem-sucedido:
+window.parent.postMessage({ type: 'partsiq:login_success' }, '*')
+```
+
+---
+
 ## Alterações recentes (sessão 2025-04-02)
 
 ### Bugs corrigidos

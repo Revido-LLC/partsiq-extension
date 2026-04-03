@@ -39,6 +39,7 @@ export interface BubbleMessage {
     | 'partsiq:ready'
     | 'partsiq:login_success'
     | 'partsiq:login_failed'
+    | 'partsiq:login_required'
     | 'partsiq:parts_saved'
     | 'partsiq:session_created'
     | 'partsiq:session_selected'

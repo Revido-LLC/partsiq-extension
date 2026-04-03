@@ -8,7 +8,7 @@ import ResultsState from '@components/states/ResultsState';
 import IframeState from '@components/states/IframeState';
 import FallbackState from '@components/states/FallbackState';
 import ConfirmState from '@components/states/ConfirmState';
-import { getAuthStatus, getActiveSession } from '@lib/storage';
+import { getActiveSession } from '@lib/storage';
 import { CONFIG } from '@lib/constants';
 import type { PartData, PopupState, Session } from '@types/parts';
 
@@ -16,19 +16,16 @@ const Popup = () => {
   const [popupState, setPopupState] = useState<PopupState>('idle');
   const [parts, setParts] = useState<PartData[]>([]);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // null = loading
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
   const [urlChanged, setUrlChanged] = useState(false);
 
   const popupStateRef = useRef(popupState);
   popupStateRef.current = popupState;
 
-  // Initialize auth + session on mount
+  // Load active session on mount (auth is verified via Bubble iframe)
   useEffect(() => {
-    Promise.all([getAuthStatus(), getActiveSession()]).then(([loggedIn, activeSession]) => {
-      setIsLoggedIn(loggedIn);
-      setSession(activeSession);
-    });
+    getActiveSession().then(setSession);
   }, []);
 
   // Listen for URL change notifications from background/content script
@@ -42,18 +39,7 @@ const Popup = () => {
     return () => chrome.runtime.onMessage.removeListener(listener);
   }, []); // registers once, reads latest state via ref
 
-  // Show loading while checking auth
-  if (isLoggedIn === null) {
-    return (
-      <PopupLayout>
-        <div className="flex items-center justify-center h-full py-12">
-          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      </PopupLayout>
-    );
-  }
-
-  // Show login if not authenticated
+  // Show login if not authenticated (LoginState verifies with Bubble on every open)
   if (!isLoggedIn) {
     return (
       <PopupLayout compact>
