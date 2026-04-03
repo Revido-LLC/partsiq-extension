@@ -9,7 +9,7 @@ export const CONFIG = {
 
   // OpenRouter
   OPENROUTER_API_URL: 'https://openrouter.ai/api/v1/chat/completions',
-  OPENROUTER_API_KEY: 'REMOVED',
+  OPENROUTER_API_KEY: import.meta.env.VITE_OPENROUTER_API_KEY as string,
   OPENROUTER_MODEL: 'openai/gpt-4o',
   OPENROUTER_MAX_TOKENS: 4096,
 
