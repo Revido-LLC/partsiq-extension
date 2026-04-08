@@ -2,30 +2,34 @@ import { useEffect, useRef, useState } from 'react';
 import StatusChip from '@components/StatusChip';
 import { captureScreenshot } from '@lib/screenshot';
 import { extractPartsFromScreenshot } from '@lib/ai';
-import type { PartData, Session } from '@types/parts';
+import type { PartData } from '@types/parts';
+import { T, type Lang } from '@lib/translations';
 
 interface Props {
-  session: Session;
-  onFound: (parts: PartData[]) => void;
+  tabUrl?: string;
+  lang: Lang;
+  overrideScreenshot?: string;
+  onFound: (parts: PartData[], tabUrl: string) => void;
   onNotFound: () => void;
 }
 
-const ScanningState = ({ session, onFound, onNotFound }: Props) => {
+const ScanningState = ({ tabUrl = '', lang, overrideScreenshot, onFound, onNotFound }: Props) => {
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cancelledRef = useRef(false);
+  const t = T[lang];
 
   const runScan = async () => {
     cancelledRef.current = false;
     setError(null);
     try {
-      const base64 = await captureScreenshot();
+      const base64 = overrideScreenshot ?? await captureScreenshot();
       if (cancelledRef.current) return;
       setScreenshot(base64);
       const parts = await extractPartsFromScreenshot(base64);
       if (cancelledRef.current) return;
       if (parts.length > 0) {
-        onFound(parts);
+        onFound(parts, tabUrl);
       } else {
         onNotFound();
       }
@@ -40,7 +44,7 @@ const ScanningState = ({ session, onFound, onNotFound }: Props) => {
     return () => {
       cancelledRef.current = true;
     };
-  }, []); // Run once on mount
+  }, []);
 
   if (error) {
     return (
@@ -51,7 +55,7 @@ const ScanningState = ({ session, onFound, onNotFound }: Props) => {
           onClick={runScan}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
         >
-          Retry
+          {t.retry}
         </button>
       </div>
     );
@@ -60,8 +64,7 @@ const ScanningState = ({ session, onFound, onNotFound }: Props) => {
   return (
     <div className="flex flex-col items-center gap-4 p-6">
       <StatusChip variant="scanning" />
-      <p className="text-sm text-gray-500">Analyzing screenshot with AI...</p>
-      <p className="text-xs text-gray-400">Session: {session.name}</p>
+      <p className="text-sm text-gray-500">{t.analyzingAI}</p>
       {screenshot && (
         <img
           src={screenshot}
