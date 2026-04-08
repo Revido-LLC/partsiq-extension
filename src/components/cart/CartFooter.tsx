@@ -5,14 +5,17 @@ interface Props {
   selectedCount: number;
   sentCount: number;
   isScanning: boolean;
+  isCropping: boolean;
   lang: Lang;
   onRescan: () => void;
+  onCrop: () => void;
   onClear: () => void;
   onFinish: () => void;
 }
 
-const CartFooter = ({ totalCount, selectedCount, sentCount, isScanning, lang, onRescan, onClear, onFinish }: Props) => {
+const CartFooter = ({ totalCount, selectedCount, sentCount, isScanning, isCropping, lang, onRescan, onCrop, onClear, onFinish }: Props) => {
   const t = T[lang];
+  const isBusy = isScanning || isCropping;
   return (
     <div className="px-4 py-2.5 flex flex-col gap-2">
       {/* Stats row */}
@@ -40,7 +43,7 @@ const CartFooter = ({ totalCount, selectedCount, sentCount, isScanning, lang, on
         )}
         <button
           onClick={onRescan}
-          disabled={isScanning}
+          disabled={isBusy}
           className="flex items-center gap-1.5 min-h-[45px] px-4 py-2.5 bg-white border border-black text-black text-sm font-normal rounded-[100px] transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isScanning ? (
@@ -58,8 +61,28 @@ const CartFooter = ({ totalCount, selectedCount, sentCount, isScanning, lang, on
           )}
         </button>
         <button
+          onClick={onCrop}
+          disabled={isBusy}
+          className="flex items-center gap-1.5 min-h-[45px] px-4 py-2.5 bg-white border border-black text-black text-sm font-normal rounded-[100px] transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isCropping ? (
+            <>
+              <span className="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              {t.selectArea}
+            </>
+          ) : (
+            <>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M3 3h4.5v2H5v2.5H3V3zm13.5 0H21v4.5h-2V5h-2.5V3zM3 16.5h2V19h2.5v2H3v-4.5zm13.5 2.5H19v-2.5h2V21h-4.5v-2z" />
+              </svg>
+              {t.crop}
+            </>
+          )}
+        </button>
+        <button
           onClick={onFinish}
-          disabled={isScanning}
+          disabled={isBusy}
           className="flex items-center gap-1.5 min-h-[45px] px-4 py-2.5 bg-[#00C6B2] text-[#473150] text-sm font-semibold rounded-full transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {t.finish}
