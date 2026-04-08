@@ -9,22 +9,26 @@ export interface PartData {
   confidence: number; // 0-1
 }
 
-export interface Session {
-  id: string;
-  name: string;
-  createdAt: string;
-  partCount: number;
-}
-
-export type PopupState =
+export type SidebarState =
   | 'login'
-  | 'idle'
-  | 'session_select'
   | 'scanning'
-  | 'results'
-  | 'iframe'
-  | 'fallback'
-  | 'confirm';
+  | 'cropping'
+  | 'cart'
+  | 'done'; // shown after "Finalizar Busca"
+
+export type CartItemStatus = 'pending' | 'sending' | 'sent' | 'error';
+
+export interface CartItem {
+  id: string;
+  part: PartData;
+  supplierName: string;
+  sourceUrl: string;
+  checked: boolean;
+  status: CartItemStatus;
+  bubblePartId?: string;
+  errorMessage?: string;
+  scannedAt: string;
+}
 
 export type StatusChipVariant =
   | 'idle'
@@ -33,6 +37,11 @@ export type StatusChipVariant =
   | 'added'
   | 'error';
 
+export interface Vehicle {
+  plate: string;
+  id?: string; // Bubble record ID, optional
+}
+
 // PostMessage types
 export interface BubbleMessage {
   type:
@@ -40,31 +49,7 @@ export interface BubbleMessage {
     | 'partsiq:login_success'
     | 'partsiq:login_failed'
     | 'partsiq:login_required'
-    | 'partsiq:parts_saved'
-    | 'partsiq:session_created'
-    | 'partsiq:session_selected'
+    | 'partsiq:vehicle_selected'
     | 'partsiq:error';
   [key: string]: unknown;
-}
-
-export interface LoginSuccessMessage extends BubbleMessage {
-  type: 'partsiq:login_success';
-  userId: string;
-}
-
-export interface PartsSavedMessage extends BubbleMessage {
-  type: 'partsiq:parts_saved';
-  count: number;
-  sessionId: string;
-}
-
-export interface SessionCreatedMessage extends BubbleMessage {
-  type: 'partsiq:session_created';
-  sessionId: string;
-  name: string;
-}
-
-export interface SessionSelectedMessage extends BubbleMessage {
-  type: 'partsiq:session_selected';
-  sessionId: string;
 }
