@@ -70,7 +70,9 @@ export function showCropOverlay(): void {
       100% { width:120px; height:90px; opacity:0; }
     }
   `;
-  document.head.appendChild(style);
+  if (!document.getElementById('partsiq-crop-styles')) {
+    document.head.appendChild(style);
+  }
 
   // ── Create overlay ───────────────────────────────────────────────────────
   overlayEl = document.createElement('div');
@@ -109,13 +111,16 @@ export function showCropOverlay(): void {
   // ── Drag logic ───────────────────────────────────────────────────────────
   let dragging = false;
   let startX = 0, startY = 0;
+  const clampX = (v: number) => Math.max(0, Math.min(v, window.innerWidth));
+  const clampY = (v: number) => Math.max(0, Math.min(v, window.innerHeight));
 
   const onMouseDown = (e: MouseEvent) => {
+    if (dragging) return;
     clearTimeout(hintTimer);
     removeHint();
     dragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
+    startX = clampX(e.clientX);
+    startY = clampY(e.clientY);
     selEl.style.display = 'block';
     selEl.style.left   = startX + 'px';
     selEl.style.top    = startY + 'px';
@@ -125,10 +130,10 @@ export function showCropOverlay(): void {
 
   const onMouseMove = (e: MouseEvent) => {
     if (!dragging) return;
-    const x = Math.min(e.clientX, startX);
-    const y = Math.min(e.clientY, startY);
-    const w = Math.abs(e.clientX - startX);
-    const h = Math.abs(e.clientY - startY);
+    const x = Math.min(clampX(e.clientX), startX);
+    const y = Math.min(clampY(e.clientY), startY);
+    const w = Math.abs(clampX(e.clientX) - startX);
+    const h = Math.abs(clampY(e.clientY) - startY);
     selEl.style.left   = x + 'px';
     selEl.style.top    = y + 'px';
     selEl.style.width  = w + 'px';
@@ -139,10 +144,10 @@ export function showCropOverlay(): void {
     if (!dragging) return;
     dragging = false;
 
-    const x = Math.min(e.clientX, startX);
-    const y = Math.min(e.clientY, startY);
-    const w = Math.abs(e.clientX - startX);
-    const h = Math.abs(e.clientY - startY);
+    const x = Math.min(clampX(e.clientX), startX);
+    const y = Math.min(clampY(e.clientY), startY);
+    const w = Math.abs(clampX(e.clientX) - startX);
+    const h = Math.abs(clampY(e.clientY) - startY);
 
     if (w < 20 || h < 20) {
       selEl.style.display = 'none';
@@ -168,6 +173,7 @@ export function showCropOverlay(): void {
 
   function cleanup() {
     clearTimeout(hintTimer);
+    overlayEl?.removeEventListener('mousedown', onMouseDown);
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
     document.removeEventListener('keydown', onKeyDown);
