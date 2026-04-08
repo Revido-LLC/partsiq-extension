@@ -49,11 +49,12 @@ const Sidebar = () => {
       if (msg.type === 'sidebar_opened' && msg.url) {
         setActiveTabUrl(msg.url);
       }
-      if (msg.type === 'crop_done' && msg.screenshot) {
+      if (msg.type === 'crop_done' && msg.screenshot && stateRef.current === 'cropping') {
         setCroppedImage(msg.screenshot as string);
         setState('scanning');
       }
       if (msg.type === 'crop_cancelled' || msg.type === 'crop_error') {
+        setCroppedImage(undefined);
         setState('cart');
       }
     };
