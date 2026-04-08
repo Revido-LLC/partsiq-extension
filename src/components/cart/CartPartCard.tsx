@@ -50,12 +50,15 @@ const CartPartCard = ({ item, lang, onToggle, onRetry, onUpdateOem }: Props) => 
           checked={checked}
           disabled={status === 'sending' || !hasOem}
           onChange={() => onToggle(id)}
-          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+          className={`w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40${!hasOem ? ' pointer-events-none' : ''}`}
         />
         {!hasOem && (
-          <div className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden group-hover/oemtip:block bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-20">
-            Add an OEM number to select this part
-          </div>
+          <>
+            <div className="absolute inset-0 cursor-not-allowed" />
+            <div className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden group-hover/oemtip:block bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-20">
+              Add an OEM number to select this part
+            </div>
+          </>
         )}
       </div>
 
