@@ -110,6 +110,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       })();
       return true;
 
+    case 'cancel_crop':
+      (async () => {
+        try {
+          const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+          if (!tab?.id) return;
+          await chrome.tabs.sendMessage(tab.id, { type: 'dismiss_crop_overlay' }).catch(() => {});
+        } catch { /* ignore */ }
+      })();
+      break;
+
     case 'crop_selected':
       (async () => {
         const { rect } = msg as {

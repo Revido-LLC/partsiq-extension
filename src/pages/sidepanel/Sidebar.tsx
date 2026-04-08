@@ -296,7 +296,10 @@ const Sidebar = () => {
           </div>
           <p className="text-sm text-gray-600">{T[lang].selectArea}</p>
           <button
-            onClick={() => setState('cart')}
+            onClick={() => {
+              setState('cart');
+              chrome.runtime.sendMessage({ type: 'cancel_crop' }).catch(() => {});
+            }}
             className="text-xs text-gray-400 hover:text-gray-600 px-2 py-1"
           >
             {T[lang].cancel}

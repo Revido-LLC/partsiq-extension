@@ -7,6 +7,7 @@ interface CropRect {
 }
 
 let overlayEl: HTMLDivElement | null = null;
+let pendingCleanup: (() => void) | null = null;
 
 export function showCropOverlay(): void {
   if (overlayEl) return;
@@ -170,6 +171,7 @@ export function showCropOverlay(): void {
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
   document.addEventListener('keydown', onKeyDown);
+  pendingCleanup = cleanup;
 
   function cleanup() {
     clearTimeout(hintTimer);
@@ -180,10 +182,16 @@ export function showCropOverlay(): void {
     overlayEl?.remove();
     document.getElementById('partsiq-crop-styles')?.remove();
     overlayEl = null;
+    pendingCleanup = null;
   }
 }
 
 function safeSend(msg: object): void {
   if (!chrome.runtime?.id) return;
   chrome.runtime.sendMessage(msg).catch(() => {});
+}
+
+/** Programmatically dismiss the crop overlay from outside (e.g., sidebar cancel). */
+export function hideCropOverlay(): void {
+  pendingCleanup?.();
 }

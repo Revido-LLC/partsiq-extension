@@ -1,4 +1,4 @@
-import { showCropOverlay } from './crop-overlay';
+import { showCropOverlay, hideCropOverlay } from './crop-overlay';
 
 let currentUrl = window.location.href;
 
@@ -38,5 +38,8 @@ observer.observe(document.body, { childList: true, subtree: true });
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg.type === 'show_crop_overlay') {
     showCropOverlay();
+  }
+  if (msg.type === 'dismiss_crop_overlay') {
+    hideCropOverlay();
   }
 });
