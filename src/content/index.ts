@@ -1,29 +1,21 @@
-// Full-page capture helpers
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg.type === 'get_page_info') {
-    sendResponse({
-      scrollHeight: document.documentElement.scrollHeight,
-      viewportHeight: window.innerHeight,
-      currentScrollY: window.scrollY,
-    });
-  } else if (msg.type === 'scroll_to') {
-    window.scrollTo(0, msg.y as number);
-    setTimeout(() => sendResponse({ done: true }), 200);
-    return true;
-  }
-});
+import { showCropOverlay } from './crop-overlay';
 
 let currentUrl = window.location.href;
 
 // Debounce to avoid flooding background on DOM-heavy SPAs
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+const safeSendMessage = (msg: object) => {
+  if (!chrome.runtime?.id) return;
+  chrome.runtime.sendMessage(msg).catch(() => {});
+};
+
 const notifyUrlChange = () => {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     if (window.location.href !== currentUrl) {
       currentUrl = window.location.href;
-      chrome.runtime.sendMessage({ type: 'url_changed', url: currentUrl });
+      safeSendMessage({ type: 'url_changed', url: currentUrl });
     }
   }, 100);
 };
@@ -37,7 +29,14 @@ observer.observe(document.body, { childList: true, subtree: true });
   const original = history[method];
   history[method] = function (...args: Parameters<typeof original>) {
     const result = original.apply(this, args);
-    chrome.runtime.sendMessage({ type: 'url_changed', url: window.location.href });
+    safeSendMessage({ type: 'url_changed', url: window.location.href });
     return result;
   };
+});
+
+// Crop overlay trigger from background
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === 'show_crop_overlay') {
+    showCropOverlay();
+  }
 });
