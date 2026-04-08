@@ -160,6 +160,6 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           chrome.runtime.sendMessage({ type: 'crop_error', error: String(err) }).catch(() => {});
         }
       })();
-      return true;
+      break; // result pushed via sendMessage — no sendResponse needed
   }
 });
