@@ -42,6 +42,13 @@ export interface Vehicle {
   id?: string; // Bubble record ID, optional
 }
 
+export interface Order {
+  plate: string;
+  id: string; // Bubble order unique_id — required
+}
+
+export type WorkMode = 'vehicle' | 'order';
+
 // PostMessage types
 export interface BubbleMessage {
   type:
@@ -50,6 +57,7 @@ export interface BubbleMessage {
     | 'partsiq:login_failed'
     | 'partsiq:login_required'
     | 'partsiq:vehicle_selected'
+    | 'partsiq:order_selected'
     | 'partsiq:error';
   [key: string]: unknown;
 }
