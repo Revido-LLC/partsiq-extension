@@ -246,14 +246,22 @@ const Sidebar = () => {
         setVehicleState(v);
         setVehicle(v);
         setVehicleExpanded(false);
-        setState('cart');
+        if (cart.length === 0) {
+          setTimeout(() => setState('scanning'), 100);
+        } else {
+          setState('cart');
+        }
       }}
       onOrderSelected={(o) => {
         if (order) { clearCart(); setCartState([]); }
         setOrderState(o);
         setOrder(o);
         setVehicleExpanded(false);
-        setState('cart');
+        if (cart.length === 0) {
+          setTimeout(() => setState('scanning'), 100);
+        } else {
+          setState('cart');
+        }
       }}
       onExpand={() => setVehicleExpanded(true)}
     />
