@@ -22,6 +22,7 @@ export const CONFIG = {
     VEHICLE: 'partsiq_vehicle',
     ORDER: 'partsiq_order',
     WORK_MODE: 'partsiq_work_mode',
+    LANGUAGE: 'partsiq_language',
   },
 
   // Bubble Workflow API

@@ -2,15 +2,13 @@ import type { CartItem, Vehicle, Order, WorkMode } from '@types/parts';
 import type { Lang } from '@lib/translations';
 import { CONFIG } from '@lib/constants';
 
-const LANG_KEY = 'partsiq_language';
-
 export async function getLanguage(): Promise<Lang> {
-  const result = await chrome.storage.local.get(LANG_KEY);
-  return (result[LANG_KEY] as Lang) ?? 'nl';
+  const result = await chrome.storage.local.get(CONFIG.STORAGE_KEYS.LANGUAGE);
+  return (result[CONFIG.STORAGE_KEYS.LANGUAGE] as Lang) ?? 'nl';
 }
 
 export async function setLanguage(lang: Lang): Promise<void> {
-  await chrome.storage.local.set({ [LANG_KEY]: lang });
+  await chrome.storage.local.set({ [CONFIG.STORAGE_KEYS.LANGUAGE]: lang });
 }
 
 export async function getAuthStatus(): Promise<boolean> {
@@ -23,13 +21,11 @@ export async function setAuthStatus(loggedIn: boolean): Promise<void> {
 }
 
 function todayDateString(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  return new Date().toISOString().slice(0, 10);
 }
 
 function itemDateString(scannedAt: string): string {
-  const d = new Date(scannedAt);
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  return new Date(scannedAt).toISOString().slice(0, 10);
 }
 
 export async function getCart(): Promise<CartItem[]> {
