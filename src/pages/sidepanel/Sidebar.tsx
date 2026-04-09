@@ -6,11 +6,17 @@ import AddPartForm from '@components/cart/AddPartForm';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
 import VehiclePanel from '@components/VehiclePanel';
-import { getCart, setCart, clearCart, getVehicle, setVehicle, clearVehicle, getLanguage, setLanguage } from '@lib/storage';
+import {
+  getCart, setCart, clearCart,
+  getVehicle, setVehicle, clearVehicle,
+  getOrder, setOrder, clearOrder,
+  getWorkMode, setWorkMode,
+  getLanguage, setLanguage,
+} from '@lib/storage';
 import { extractSupplierName } from '@lib/supplier';
-import { sendPartToBubble, removePartFromBubble } from '@lib/bubble-api';
+import { sendPartToBubble, removePartFromBubble, type WorkContext } from '@lib/bubble-api';
 import { T, type Lang } from '@lib/translations';
-import type { CartItem, CartItemStatus, PartData, SidebarState, Vehicle } from '@types/parts';
+import type { CartItem, CartItemStatus, Order, PartData, SidebarState, Vehicle, WorkMode } from '@types/parts';
 
 const Sidebar = () => {
   const [state, setState] = useState<SidebarState>('login');
@@ -25,6 +31,9 @@ const Sidebar = () => {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  const [workMode, setWorkModeState] = useState<WorkMode>('vehicle');
+  const [order, setOrderState] = useState<Order | null>(null);
+
   // ── Boot: load cart + vehicle + language from storage ────────────────────
   useEffect(() => {
     getCart().then(setCartState);
@@ -32,6 +41,11 @@ const Sidebar = () => {
       setVehicleState(v);
       if (v) setVehicleExpanded(false);
     });
+    getOrder().then(o => {
+      setOrderState(o);
+      if (o) setVehicleExpanded(false);
+    });
+    getWorkMode().then(setWorkModeState);
     getLanguage().then(setLangState);
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, tabs => {
       setActiveTabUrl(tabs[0]?.url ?? '');
@@ -82,17 +96,18 @@ const Sidebar = () => {
   // ── Scan trigger ─────────────────────────────────────────────────────────
   const triggerScan = useCallback(() => {
     if (stateRef.current === 'scanning') return;
-    if (!vehicle) {
-      // Expand vehicle panel — can't scan without a vehicle
+    const hasSelection = workMode === 'order' ? !!order : !!vehicle;
+    if (!hasSelection) {
       setVehicleExpanded(true);
       return;
     }
     setUrlChangeBanner(null);
     setState('scanning');
-  }, [vehicle]);
+  }, [vehicle, order, workMode]);
 
   const triggerCrop = useCallback(async () => {
-    if (!vehicle) {
+    const hasSelection = workMode === 'order' ? !!order : !!vehicle;
+    if (!hasSelection) {
       setVehicleExpanded(true);
       return;
     }
@@ -103,7 +118,7 @@ const Sidebar = () => {
     } catch {
       setState('cart');
     }
-  }, [vehicle]);
+  }, [vehicle, order, workMode]);
 
   // ── Parts found: merge into cart ─────────────────────────────────────────
   const handlePartsFound = useCallback((parts: PartData[], tabUrl: string) => {
@@ -142,7 +157,10 @@ const Sidebar = () => {
   // ── Part toggle (check/uncheck) ──────────────────────────────────────────
   const handleToggle = useCallback(async (id: string) => {
     const item = cart.find(i => i.id === id);
-    if (!item || item.status === 'sending' || !vehicle) return;
+    const hasSelection = workMode === 'order' ? !!order : !!vehicle;
+    if (!item || item.status === 'sending' || !hasSelection) return;
+
+    const ctx: WorkContext = { mode: workMode, vehicle, order };
 
     if (!item.checked) {
       updateCartItem(id, { checked: true, status: 'sending', errorMessage: undefined });
@@ -150,7 +168,7 @@ const Sidebar = () => {
         const { partId } = await sendPartToBubble(
           item.part,
           item.supplierName,
-          vehicle,
+          ctx,
           item.sourceUrl
         );
         updateCartItem(id, { status: 'sent', bubblePartId: partId });
@@ -170,7 +188,7 @@ const Sidebar = () => {
         updateCartItem(id, { checked: false, status: 'pending' });
       }
     }
-  }, [cart, vehicle, updateCartItem]);
+  }, [cart, vehicle, order, workMode, updateCartItem]);
 
   // ── Update OEM number ────────────────────────────────────────────────────
   const handleUpdateOem = useCallback((id: string, oemNumber: string) => {
@@ -186,27 +204,31 @@ const Sidebar = () => {
   // ── Retry errored item ───────────────────────────────────────────────────
   const handleRetry = useCallback(async (id: string) => {
     const item = cart.find(i => i.id === id);
-    if (!item || !vehicle) return;
+    const hasSelection = workMode === 'order' ? !!order : !!vehicle;
+    if (!item || !hasSelection) return;
+    const ctx: WorkContext = { mode: workMode, vehicle, order };
     updateCartItem(id, { status: 'sending', errorMessage: undefined });
     try {
       const { partId } = await sendPartToBubble(
         item.part,
         item.supplierName,
-        vehicle,
+        ctx,
         item.sourceUrl
       );
       updateCartItem(id, { status: 'sent', checked: true, bubblePartId: partId });
     } catch (err) {
       updateCartItem(id, { status: 'error', errorMessage: String(err) });
     }
-  }, [cart, vehicle, updateCartItem]);
+  }, [cart, vehicle, order, workMode, updateCartItem]);
 
   // ── Finalizar Busca ──────────────────────────────────────────────────────
   const handleFinish = useCallback(async () => {
     await clearCart();
     await clearVehicle();
+    await clearOrder();
     setCartState([]);
     setVehicleState(null);
+    setOrderState(null);
     setVehicleExpanded(true);
     setUrlChangeBanner(null);
     setState('done');
@@ -215,16 +237,23 @@ const Sidebar = () => {
   const vehiclePanelNode = (
     <VehiclePanel
       vehicle={vehicle}
+      order={order}
+      workMode={workMode}
       expanded={vehicleExpanded}
       lang={lang}
       onVehicleSelected={(v) => {
+        if (vehicle) { clearCart(); setCartState([]); }
         setVehicleState(v);
         setVehicle(v);
         setVehicleExpanded(false);
-        // Auto-scan after vehicle selection if we don't have items yet
-        if (cart.length === 0) {
-          setTimeout(() => setState('scanning'), 100);
-        }
+        setState('cart');
+      }}
+      onOrderSelected={(o) => {
+        if (order) { clearCart(); setCartState([]); }
+        setOrderState(o);
+        setOrder(o);
+        setVehicleExpanded(false);
+        setState('cart');
       }}
       onExpand={() => setVehicleExpanded(true)}
     />
@@ -234,8 +263,11 @@ const Sidebar = () => {
   if (!isLoggedIn) {
     return (
       <SidebarLayout>
-        <LoginState lang={lang} onSuccess={(detectedLang) => {
+        <LoginState lang={lang} onSuccess={(detectedLang, autoflexConnected) => {
           if (detectedLang) { setLangState(detectedLang); setLanguage(detectedLang); }
+          const mode: WorkMode = autoflexConnected ? 'order' : 'vehicle';
+          setWorkModeState(mode);
+          setWorkMode(mode);
           setIsLoggedIn(true);
         }} />
       </SidebarLayout>
@@ -383,7 +415,7 @@ const Sidebar = () => {
               onUpdateOem={handleUpdateOem}
             />
           ))}
-          {state === 'cart' && vehicle && (
+          {state === 'cart' && (workMode === 'order' ? !!order : !!vehicle) && (
             <AddPartForm
               lang={lang}
               onAdd={(partName, oemNumber) => {
@@ -416,15 +448,17 @@ const Sidebar = () => {
         </div>
       )}
 
-      {/* Empty cart + no vehicle = prompt to select vehicle */}
-      {state === 'cart' && cart.length === 0 && !vehicle && (
+      {/* Empty cart + no selection = prompt to select vehicle or order */}
+      {state === 'cart' && cart.length === 0 && (workMode === 'order' ? !order : !vehicle) && (
         <div className="flex flex-col items-center justify-center h-full gap-3 p-8 text-center">
-          <p className="text-sm text-gray-500">{T[lang].selectVehicle}</p>
+          <p className="text-sm text-gray-500">
+            {workMode === 'order' ? T[lang].selectOrder : T[lang].selectVehicle}
+          </p>
         </div>
       )}
 
-      {/* Empty cart + has vehicle = prompt to scan */}
-      {state === 'cart' && cart.length === 0 && vehicle && (
+      {/* Empty cart + has selection = prompt to scan */}
+      {state === 'cart' && cart.length === 0 && (workMode === 'order' ? !!order : !!vehicle) && (
         <div className="flex flex-col items-center justify-center h-full gap-3 p-8 text-center">
           <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
             <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
