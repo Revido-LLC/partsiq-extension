@@ -6,7 +6,7 @@ import { CONFIG } from '@lib/constants';
  * Builds a Bubble embeddable page URL with optional query parameters.
  */
 export function buildBubbleUrl(
-  page: 'login' | 'parts' | 'session',
+  page: 'login' | 'parts' | 'session' | 'vehicle',
   params?: Record<string, string>
 ): string {
   const base = CONFIG.BUBBLE_BASE_URL + CONFIG.BUBBLE_PAGES[page];

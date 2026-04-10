@@ -15,158 +15,114 @@ Todo o código da extensão está implementado e buildando limpo (`yarn build:ch
 | Iframe/postMessage | `src/lib/iframe.ts` | ✅ |
 | Service Worker | `src/background/index.ts` | ✅ |
 | Content Script | `src/content/index.ts` | ✅ |
-| Componentes compartilhados | StatusChip, SessionBadge, BubbleIframe, PopupLayout | ✅ |
-| State machine | Popup.tsx + 8 state components | ✅ |
+| Sidebar state machine | `src/pages/sidepanel/Sidebar.tsx` | ✅ |
+| VehiclePanel | `src/components/VehiclePanel.tsx` | ✅ |
+| CartPartCard | `src/components/cart/CartPartCard.tsx` | ✅ |
+| CartFooter | `src/components/cart/CartFooter.tsx` | ✅ |
+| LoginState | `src/components/states/LoginState.tsx` | ✅ |
+| ScanningState | `src/components/states/ScanningState.tsx` | ✅ |
+| FallbackState | `src/components/states/FallbackState.tsx` | ✅ |
 | Repositório | https://github.com/Revido-LLC/partsiq-extension | ✅ |
 
 ---
 
-## Alterações recentes (sessão 2026-04-03)
+## Alterações recentes (sessão 2026-04-06)
 
-### Auth verificada via Bubble a cada abertura
+### Refatoração completa — remoção de sessões, foco no veículo
 
-**Problema:** A verificação de login era feita apenas pelo flag local (`chrome.storage.local`). Se o usuário saísse do Bubble em outra aba, ou a sessão expirasse, o extension não detectava e seguia para o UI principal normalmente.
+**Motivação:** O modelo de "sessão de cotação" foi substituído pelo veículo como unidade de trabalho. O popup foi descontinuado. O sidebar é o único modo de uso.
 
-**Correção:**
-- `Popup.tsx`: removido o atalho pelo flag local. O extension sempre começa deslogado e passa pelo `LoginState`.
-- `LoginState.tsx`: adicionada fase `'checking'` — carrega o iframe do Bubble `/auth/` em background e exibe um spinner. Quando Bubble responde:
-  - `partsiq:login_success` → vai direto ao UI principal (sem mostrar formulário)
-  - `partsiq:login_required` → exibe o formulário de login
-  - Sem resposta em 5s → exibe o formulário de login (fallback)
-- `types/parts.ts`: adicionado `partsiq:login_required` ao union type de `BubbleMessage`.
+**Mudanças:**
 
-**O que a página Bubble `/auth/` precisa fazer:**
-```javascript
-// No carregamento da página — verificar sessão ativa no Bubble
-// Se logado:
-window.parent.postMessage({ type: 'partsiq:login_success' }, '*')
-// Se não logado:
-window.parent.postMessage({ type: 'partsiq:login_required' }, '*')
-// Após login bem-sucedido:
-window.parent.postMessage({ type: 'partsiq:login_success' }, '*')
-```
+- **`manifest.json`:** Adicionado `host_permissions: ["https://app.parts-iq.com/*"]` — necessário para que `credentials: 'include'` funcione nas chamadas REST para o Bubble.
+- **`src/types/parts.ts`:** Removidos `Session`, `PopupState`, e todos os message types de sessão. `SidebarState` ganhou o estado `'done'` (após Finalizar Busca).
+- **`src/lib/constants.ts`:** Removidas chaves `session`, `parts` e `ACTIVE_SESSION`. Removido `MAX_URL_PARAM_LENGTH`.
+- **`src/lib/storage.ts`:** Removidas funções de sessão (`getActiveSession`, `setActiveSession`). Expiração do carrinho mudou de 24h para **dia corrente** — itens de dias anteriores são descartados na leitura.
+- **`src/lib/bubble-api.ts`:** `sendPartToBubble` não recebe mais `session_id`. Agora recebe `vehicle: Vehicle` (com `plate` e `id`) e `sourceUrl`.
+- **`src/pages/sidepanel/Sidebar.tsx`:** Removida toda lógica de sessão. Veículo é obrigatório — sem veículo o scan é bloqueado e o VehiclePanel fica expandido. Auto-scan após selecionar veículo (se carrinho vazio). Novo handler `handleFinish` para o botão Finalizar Busca. Tela `'done'` com mensagem e botão "Nova busca".
+- **`src/components/SidebarLayout.tsx`:** Removida dependência de `Session`/`SessionBadge`. Header agora exibe badge com placa do veículo.
+- **`src/components/cart/CartFooter.tsx`:** Adicionado botão "Finalizar" (verde) que chama `onFinish`.
+- **`src/components/states/ScanningState.tsx`:** Removida prop `session`.
+- **Deletados:** `src/pages/popup/` (inteiro), `SessionState.tsx`, `IframeState.tsx`, `ConfirmState.tsx`, `IdleState.tsx`, `ResultsState.tsx`, `SessionBadge.tsx`.
 
 ---
 
-## Alterações recentes (sessão 2025-04-02)
+## Alterações anteriores (sessão 2026-04-03)
 
-### Bugs corrigidos
+### Auth verificada via Bubble a cada abertura
 
-#### 1. `fetch(dataUrl)` falha em service workers MV3 — `src/background/index.ts`
-**Problema:** Ao tentar capturar a página inteira (múltiplas capturas + stitch), o código usava `fetch(dataUrl)` para converter data URLs em Blobs. `fetch()` com data URLs não funciona em service workers MV3 do Chrome.
-**Correção:** Substituído por conversão manual via `atob()` + `Uint8Array`.
-
-#### 2. "no response from background service worker" era enganoso — `src/lib/screenshot.ts`
-**Problema:** O background enviava `{ error: "mensagem real" }` mas o popup só checava `!response.screenshot`, exibindo sempre a mensagem genérica.
-**Correção:** `throw new Error(response?.error ?? 'Screenshot capture failed...')` — agora exibe o erro real.
-
-#### 3. Content script não injetado em abas pré-existentes — `src/background/index.ts`
-**Problema:** `get_page_info` falhava com "Could not establish connection" quando a aba foi aberta antes de recarregar a extensão.
-**Correção:** `try/catch` ao redor de `get_page_info` — se falhar, faz fallback para captura simples (apenas viewport visível).
-
-#### 4. `null` como windowId em `captureVisibleTab` — `src/background/index.ts`
-**Problema:** `captureVisibleTab(null as unknown as number, ...)` era um hack TypeScript. Usa-se agora `tab.windowId`.
-
-#### 5. AI retornava JSON em markdown code fences — `src/lib/ai.ts`
-**Problema:** A IA retornava a resposta dentro de ` ```json ... ``` `, causando falha no `JSON.parse`.
-**Correção:** Strip das fences antes do parse: `content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '')`.
-
-### Nova funcionalidade
-
-#### `ResultsState` — `src/components/states/ResultsState.tsx`
-**Por quê:** `IframeState` carregava a página Bubble `/ext-parts` que ainda não existe, deixando a tela em branco após a extração.
-**O que faz:** Exibe as peças extraídas diretamente no popup (nome, OEM, preços, fornecedor) com botão "Save to PartsIQ" que avança para o `IframeState` (integração Bubble futura).
-**Fluxo atual:** `scanning` → `results` (exibe peças) → `iframe` (salva no Bubble quando pronto)
+- `LoginState.tsx`: fase `'checking'` — carrega iframe `/auth/` em background, spinner enquanto aguarda resposta.
+  - `partsiq:login_success` → vai direto ao UI principal
+  - `partsiq:login_required` → exibe formulário
+  - Sem resposta em 5s → fallback para formulário
 
 ---
 
 ## O que falta
 
-### 1. Definir o domínio Bubble real
-Atualizar em `src/lib/constants.ts`:
-```typescript
-BUBBLE_BASE_URL: 'https://YOUR_BUBBLE_DOMAIN', // ← substituir aqui
-```
+### 1. Bubble — Workflow `save_part`
 
-### 2. Criar 3 páginas no Bubble (trabalho manual no Bubble editor)
+**Endpoint:** `POST /api/1.1/wf/save_part`
+**Run as:** Logged-in user (usa cookie de sessão — sem API key)
 
-#### `/ext-login`
-- Formulário de login limpo (sem header, nav ou sidebar do Bubble)
-- Ao fazer login com sucesso, disparar:
-  ```javascript
-  window.parent.postMessage({ type: 'partsiq:login_success', userId: '...' }, '*')
-  ```
-- Ao falhar:
-  ```javascript
-  window.parent.postMessage({ type: 'partsiq:login_failed', error: '...' }, '*')
-  ```
-- No carregamento da página, sempre disparar:
-  ```javascript
-  window.parent.postMessage({ type: 'partsiq:ready' }, '*')
-  ```
+Parâmetros recebidos:
+| Campo | Tipo |
+|-------|------|
+| `part_name` | text |
+| `oem_number` | text |
+| `net_price` | number |
+| `gross_price` | number |
+| `delivery_time` | text |
+| `stock_available` | yes/no |
+| `supplier` | text |
+| `vehicle_plate` | text |
+| `vehicle_id` | text |
+| `confidence` | number |
+| `source_url` | text |
 
-#### `/ext-parts`
-- Recebe peças via URL params (`?session_id=X&parts=<JSON>`) ou via postMessage `partsiq:set_parts`
-- Exibe lista de peças com checkboxes (partName, oemNumber, netPrice, grossPrice, deliveryTime, stock)
-- Seletor de carro (por placa) e vínculo com pedido
-- Ao salvar:
-  ```javascript
-  window.parent.postMessage({ type: 'partsiq:parts_saved', count: N, sessionId: '...' }, '*')
-  ```
-- No carregamento: disparar `partsiq:ready`
+Ação: Create new Part com todos os campos acima.
+Retorno: `{ "part_id": "<unique id do registro>" }`
 
-#### `/ext-session`
-- Criar nova sessão de coleta
-- Listar sessões recentes com contagem de peças
-- Selecionar sessão existente
-- Ao criar:
-  ```javascript
-  window.parent.postMessage({ type: 'partsiq:session_created', sessionId: '...', name: '...' }, '*')
-  ```
-- Ao selecionar:
-  ```javascript
-  window.parent.postMessage({ type: 'partsiq:session_selected', sessionId: '...' }, '*')
-  ```
-- No carregamento: disparar `partsiq:ready`
+### 2. Bubble — Workflow `remove_part`
 
-**Todas as 3 páginas devem:**
-- Usar layout sem header/nav/sidebar do Bubble (embed limpo)
-- Disparar `partsiq:ready` ao carregar
-- Escutar postMessages vindos da extensão
+**Endpoint:** `POST /api/1.1/wf/remove_part`
+**Run as:** Logged-in user
+
+| Campo | Tipo |
+|-------|------|
+| `part_id` | text |
+
+Ação: Delete Part where unique id = `part_id`.
+Retorno: 200 OK (sem body).
 
 ---
 
 ## Próximos passos (ordem recomendada)
 
-1. **Criar as 3 páginas no Bubble** (ver protocolo acima) — próximo passo ativo
-   - Começar por `/ext-parts` (fluxo principal)
-   - Depois `/ext-session`
-   - Depois `/ext-login`
-2. **Confirmar tipos de dados no Bubble** — Thing `Part`/`Capture` com campos OEM, nome, preço net, preço bruto, fornecedor, sessão
-3. **Definir domínio Bubble** → atualizar `BUBBLE_BASE_URL` em `src/lib/constants.ts` (ainda placeholder)
-4. **Testar fluxo completo:**
-   - Login via iframe Bubble
+1. **Criar os 2 workflows no Bubble** (ver acima) — próximo passo ativo
+2. **Testar fluxo completo:**
+   - Abrir sidebar → login via iframe `/auth/`
+   - Selecionar veículo via iframe `/extension`
    - Capturar screenshot em site de peças
    - Verificar extração via AI
-   - Selecionar peças no ResultsState
-   - Confirmar que peças chegam na página `/ext-parts` via postMessage
-5. **Testar nos sites-alvo:** Molco, Parts 360, WM Parts, LKQ, RA Parts, Bright Motive, PartsLink24
+   - Marcar peças → confirmar que chegam no Bubble
+   - Desmarcar → confirmar que são removidas
+   - Clicar "Finalizar Busca" → confirmar clear + reset de veículo
+3. **Testar nos sites-alvo:** Molco, Parts 360, WM Parts, LKQ, RA Parts, Bright Motive, PartsLink24
 
 ---
 
-## Arquitetura resumida
+## Arquitetura atual (sidebar)
 
 ```
-Mechanic abre popup
-  → não logado? → LoginState (iframe /ext-login) → postMessage login_success
-  → logado + idle → botão "Capture parts"
-      → SessionState (iframe /ext-session) → escolhe/cria sessão
-      → ScanningState → screenshot → OpenRouter AI → extrai peças JSON
-          → peças encontradas → ResultsState (cards com checkbox, copy OEM, badge confiança)
-              → usuário seleciona peças → "Add to PartsIQ"
-              → IframeState (iframe /ext-parts, peças via postMessage)
-          → não encontrado → FallbackState (input manual)
-      → partsiq:parts_saved → ConfirmState → "Open PartsIQ" / "Add more" / "Close"
+Abrir sidebar
+  → não logado? → LoginState (iframe /auth/) → partsiq:login_success
+  → logado + sem veículo → VehiclePanel expandido (iframe /extension/)
+      → partsiq:vehicle_selected → badge placa no header
+  → logado + com veículo → cart state
+      → Re-scan → ScanningState → screenshot → GPT-4o → CartItems
+      → não encontrado → FallbackState (entrada manual)
+  → marcar peça → POST /wf/save_part (cookie) → status: sent
+  → desmarcar → POST /wf/remove_part → status: pending
+  → Finalizar Busca → clear cart + zera veículo + tela "done"
 ```
-
-**Comunicação com Bubble:** 100% via iframe + URL params + postMessage. Zero chamadas de API direta.

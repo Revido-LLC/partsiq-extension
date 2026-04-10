@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+const DEBUG = true; // set to true to write state snapshots to localStorage
 import SidebarLayout from '@components/SidebarLayout';
 import CartFooter from '@components/cart/CartFooter';
 import CartPartCard from '@components/cart/CartPartCard';
@@ -12,7 +14,10 @@ import {
   getOrder, setOrder, clearOrder,
   getWorkMode, setWorkMode,
   getLanguage, setLanguage,
+  getAuthStatus, setAuthStatus,
 } from '@lib/storage';
+import { useSilentAuth } from '@lib/auth';
+import { useBubbleMessages } from '@lib/iframe';
 import { extractSupplierName } from '@lib/supplier';
 import { sendPartToBubble, removePartFromBubble, type WorkContext } from '@lib/bubble-api';
 import { T, type Lang } from '@lib/translations';
@@ -33,25 +38,105 @@ const Sidebar = () => {
 
   const [workMode, setWorkModeState] = useState<WorkMode>('vehicle');
   const [order, setOrderState] = useState<Order | null>(null);
+  const [authCheckTrigger, setAuthCheckTrigger] = useState(0);
+  const isLoggedInRef = useRef(false);
+  isLoggedInRef.current = isLoggedIn;
+  const cartRef = useRef(cart);
+  cartRef.current = cart;
+  const vehicleRef = useRef(vehicle);
+  vehicleRef.current = vehicle;
+  const orderRef = useRef(order);
+  orderRef.current = order;
 
-  // ── Boot: load cart + vehicle + language from storage ────────────────────
+  // ── DEBUG: write state snapshot to localStorage on every render ──────────
+  if (DEBUG) localStorage.setItem('partsiq_debug', JSON.stringify({
+    state, isLoggedIn, workMode,
+    order: order?.id ?? null,
+    vehicle: vehicle?.plate ?? null,
+    vehicleExpanded,
+    cartLen: cart.length,
+  }));
+
+  // ── Boot: load all storage in parallel, restore session if valid ─────────
   useEffect(() => {
-    getCart().then(setCartState);
-    getVehicle().then(v => {
-      setVehicleState(v);
-      if (v) setVehicleExpanded(false);
+    Promise.all([
+      getAuthStatus(),
+      getCart(),
+      getVehicle(),
+      getOrder(),
+      getWorkMode(),
+      getLanguage(),
+    ]).then(([stored, cart, vehicle, order, workMode, lang]) => {
+      setCartState(cart);
+      if (vehicle) { setVehicleState(vehicle); setVehicleExpanded(false); }
+      if (order)   { setOrderState(order);   setVehicleExpanded(false); }
+      setWorkModeState(workMode);
+      setLangState(lang);
+      if (stored) {
+        setIsLoggedIn(true);
+        setAuthCheckTrigger(1); // trigger silent auth check on first open
+      }
     });
-    getOrder().then(o => {
-      setOrderState(o);
-      if (o) setVehicleExpanded(false);
-    });
-    getWorkMode().then(setWorkModeState);
-    getLanguage().then(setLangState);
     chrome.tabs.query({ active: true, lastFocusedWindow: true }, tabs => {
       setActiveTabUrl(tabs[0]?.url ?? '');
     });
   }, []);
 
+  // ── Silent auth: verifies session without disrupting the UI ─────────────
+  useSilentAuth(
+    authCheckTrigger,
+    (detectedLang) => {
+      // Session still valid — only update lang, workMode comes from storage/login
+      if (detectedLang) { setLangState(detectedLang); setLanguage(detectedLang); }
+      setAuthStatus(true);
+    },
+    () => {
+      // Session expired — send user to login
+      setAuthStatus(false);
+      setIsLoggedIn(false);
+    },
+  );
+
+
+  // ── Vehicle / Order selection — always listening, guarded by isLoggedIn ──
+  useBubbleMessages((msg) => {
+    if (!isLoggedInRef.current) return;
+
+    if (msg.type === 'partsiq:vehicle_selected') {
+      const plate = msg.plate as string;
+      if (plate) {
+        const v: Vehicle = { plate, id: msg.id as string | undefined };
+        const hadVehicle = !!vehicleRef.current;
+        if (hadVehicle) { clearCart(); setCartState([]); }
+        setVehicleState(v);
+        setVehicle(v);
+        setVehicleExpanded(false);
+        if (hadVehicle || cartRef.current.length === 0) {
+          setTimeout(() => setState('scanning'), 100);
+        } else {
+          setState('cart');
+        }
+      }
+    }
+
+    if (msg.type === 'partsiq:order_selected') {
+      const plate = (msg.plate as string) || '';
+      const id = msg.id as string;
+      if (id) {
+        const o: Order = { plate, id };
+        const hadOrder = !!orderRef.current;
+        if (hadOrder) { clearCart(); setCartState([]); }
+        setOrderState(o);
+        setOrder(o);
+        setVehicleExpanded(false);
+        if (hadOrder || cartRef.current.length === 0) {
+          setTimeout(() => setState('scanning'), 100);
+        } else {
+          setState('cart');
+        }
+      }
+    }
+  });
 
   // ── Listen for URL changes + sidebar_opened signal ──────────────────────
   useEffect(() => {
@@ -62,6 +147,10 @@ const Sidebar = () => {
       }
       if (msg.type === 'sidebar_opened' && msg.url) {
         setActiveTabUrl(msg.url);
+        // Re-verify session silently only if we believe user is logged in
+        if (isLoggedInRef.current) {
+          setAuthCheckTrigger(t => t + 1);
+        }
       }
       if (msg.type === 'crop_done' && msg.screenshot && stateRef.current === 'cropping') {
         setCroppedImage(msg.screenshot as string);
@@ -241,28 +330,6 @@ const Sidebar = () => {
       workMode={workMode}
       expanded={vehicleExpanded}
       lang={lang}
-      onVehicleSelected={(v) => {
-        if (vehicle) { clearCart(); setCartState([]); }
-        setVehicleState(v);
-        setVehicle(v);
-        setVehicleExpanded(false);
-        if (cart.length === 0) {
-          setTimeout(() => setState('scanning'), 100);
-        } else {
-          setState('cart');
-        }
-      }}
-      onOrderSelected={(o) => {
-        if (order) { clearCart(); setCartState([]); }
-        setOrderState(o);
-        setOrder(o);
-        setVehicleExpanded(false);
-        if (cart.length === 0) {
-          setTimeout(() => setState('scanning'), 100);
-        } else {
-          setState('cart');
-        }
-      }}
       onExpand={() => setVehicleExpanded(true)}
     />
   );

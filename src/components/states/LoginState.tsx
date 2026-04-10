@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BubbleIframe from '@components/BubbleIframe';
 import { buildBubbleUrl } from '@lib/iframe';
 import { setAuthStatus } from '@lib/storage';
@@ -13,6 +13,7 @@ interface Props {
 const LoginState = ({ lang, onSuccess }: Props) => {
   const [phase, setPhase] = useState<'checking' | 'form'>('checking');
   const [error, setError] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const t = T[lang];
 
   // Fallback: if Bubble doesn't respond in 5s, show login form
@@ -22,12 +23,16 @@ const LoginState = ({ lang, onSuccess }: Props) => {
   }, []);
 
   const handleMessage = async (msg: BubbleMessage) => {
+    console.log('[DEBUG] LoginState message received:', msg.type, msg);
     if (msg.type === 'partsiq:login_success') {
       await setAuthStatus(true);
       const raw = msg.language;
       const detectedLang: Lang | undefined =
         raw === 'en' || raw === 'nl' ? raw : undefined;
       const autoflexConnected = msg.autoflex_connected === true;
+      if (iframeRef.current) {
+        iframeRef.current.src = buildBubbleUrl('vehicle');
+      }
       onSuccess(detectedLang, autoflexConnected);
     } else if (msg.type === 'partsiq:login_required') {
       setPhase('form');
@@ -55,6 +60,7 @@ const LoginState = ({ lang, onSuccess }: Props) => {
         <BubbleIframe
           src={iframeUrl}
           onMessage={handleMessage}
+          iframeRef={iframeRef}
           height="100%"
         />
       </div>

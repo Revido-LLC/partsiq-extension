@@ -56,7 +56,7 @@ const CartPartCard = ({ item, lang, onToggle, onRetry, onUpdateOem }: Props) => 
           <>
             <div className="absolute inset-0 cursor-not-allowed" />
             <div className="pointer-events-none absolute bottom-full left-0 mb-1.5 hidden group-hover/oemtip:block bg-gray-800 text-white text-[10px] rounded px-2 py-1 whitespace-nowrap z-20">
-              Add an OEM number to select this part
+              Add a part number to select this part
             </div>
           </>
         )}
@@ -88,11 +88,11 @@ const CartPartCard = ({ item, lang, onToggle, onRetry, onUpdateOem }: Props) => 
             <button
               onClick={() => { setOemDraft(part.oemNumber ?? ''); setEditingOem(true); }}
               className="group flex items-center gap-1"
-              title="Edit OEM number"
+              title="Edit part number"
             >
               {part.oemNumber ? (
                 <span className="flex items-center gap-1">
-                  <span className="text-[10px] text-gray-400">OEM:</span>
+                  <span className="text-[10px] text-gray-400">PN:</span>
                   <span className="text-xs text-gray-500 font-mono group-hover:text-blue-600 transition-colors">{part.oemNumber}</span>
                 </span>
               ) : (

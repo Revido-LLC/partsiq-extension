@@ -49,7 +49,7 @@ const FallbackState = ({ onSubmit }: Props) => {
         {rows.map((row, i) => (
           <div key={i} className="flex flex-col gap-1.5 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <input
-              placeholder="OEM number *"
+              placeholder="Part number *"
               value={row.oemNumber}
               onChange={(e) => updateRow(i, 'oemNumber', e.target.value)}
               className="w-full px-2.5 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"

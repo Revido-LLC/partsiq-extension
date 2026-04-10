@@ -102,7 +102,22 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         try {
           const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
           if (!tab?.id) { sendResponse({ error: 'No active tab' }); return; }
-          await chrome.tabs.sendMessage(tab.id, { type: 'show_crop_overlay' });
+
+          // Try sending to content script; if not loaded (e.g. tab was open before
+          // extension reload), inject it first then retry.
+          const sendOverlayMsg = () =>
+            chrome.tabs.sendMessage(tab.id!, { type: 'show_crop_overlay' });
+          try {
+            await sendOverlayMsg();
+          } catch {
+            const manifest = chrome.runtime.getManifest();
+            const scriptFile = (manifest as { content_scripts?: { js?: string[] }[] })
+              .content_scripts?.[0]?.js?.[0];
+            if (!scriptFile) throw new Error('Content script not found in manifest');
+            await chrome.scripting.executeScript({ target: { tabId: tab.id! }, files: [scriptFile] });
+            await sendOverlayMsg();
+          }
+
           sendResponse({ ok: true });
         } catch (err) {
           sendResponse({ error: String(err) });
@@ -116,7 +131,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
           if (!tab?.id) return;
           await chrome.tabs.sendMessage(tab.id, { type: 'dismiss_crop_overlay' }).catch(() => {});
-        } catch { /* ignore */ }
+        } catch { /* overlay may not be present — ignore */ }
       })();
       break;
 
