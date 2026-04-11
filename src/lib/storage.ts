@@ -1,14 +1,6 @@
 import type { CartItem, Lang, WorkMode, Vehicle, Order } from '@types/parts';
 import { CONFIG } from '@lib/constants';
 
-// Legacy Session type for backward compatibility with old popup code
-export interface Session {
-  id: string;
-  name: string;
-  createdAt: string;
-  partCount: number;
-}
-
 const K = CONFIG.STORAGE_KEYS;
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -62,33 +54,4 @@ export async function getCart(): Promise<CartItem[]> {
 }
 export async function setCart(items: CartItem[]): Promise<void> {
   await chrome.storage.local.set({ [K.CART]: items, [K.CART_DATE]: today() });
-}
-
-// ---- Backward Compatibility (Legacy popup API) ----
-// These functions are kept for backward compatibility with old popup code
-// and will be removed in Task 14 (Delete old popup files)
-
-export async function getActiveSession(): Promise<Session | null> {
-  const r = await chrome.storage.local.get(K.ORDER);
-  if (!r[K.ORDER]) return null;
-  const order = r[K.ORDER] as Order;
-  return {
-    id: order.id,
-    name: `Session for ${order.plate}`,
-    createdAt: new Date().toISOString(),
-    partCount: 0,
-  };
-}
-
-export async function setActiveSession(session: Session | null): Promise<void> {
-  if (session) {
-    // Map legacy Session back to new Order model
-    const order: Order = {
-      id: session.id,
-      plate: session.name,
-    };
-    await chrome.storage.local.set({ [K.ORDER]: order });
-  } else {
-    await chrome.storage.local.set({ [K.ORDER]: null });
-  }
 }
