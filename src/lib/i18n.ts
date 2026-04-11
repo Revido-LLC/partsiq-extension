@@ -1,0 +1,76 @@
+import type { Lang } from '@types/parts';
+
+const T = {
+  en: {
+    partNumber: 'Part number',
+    supplier: 'Supplier',
+    deliveryTime: 'Delivery time',
+    stock: 'Stock',
+    price: 'Price',
+    changeVehicle: 'Change vehicle',
+    changeOrder: 'Change order',
+    scanning: 'Scanning page...',
+    noPartsFound: 'No parts found on this page.',
+    tryWithCrop: 'Try with crop selection',
+    addManually: '+ Add part manually',
+    addPart: 'Add part',
+    partName: 'Part name',
+    partNumberLabel: 'Part number',
+    cancel: 'Cancel',
+    clearUnsent: 'Clear unsent',
+    finishSearch: 'Finish search',
+    searchFinished: 'Search finished.',
+    newQuote: 'New quote',
+    checkStatus: 'Check part status in PartsIQ.',
+    pageChanged: 'Page changed — scan now?',
+    scan: 'Scan page',
+    crop: 'Crop selection',
+    retry: 'Retry',
+    sending: 'Sending…',
+    sent: '✓ Sent',
+    errorLabel: 'Error',
+    loginError: 'Login failed. Please try again.',
+    scanError: 'Scan failed.',
+    removeUnsentConfirm: (count: number) =>
+      `Remove ${count} unsent part${count === 1 ? '' : 's'}?`,
+  },
+  nl: {
+    partNumber: 'Artikelnummer',
+    supplier: 'Leverancier',
+    deliveryTime: 'Levertijd',
+    stock: 'Voorraad',
+    price: 'Prijs',
+    changeVehicle: 'Voertuig wijzigen',
+    changeOrder: 'Order wijzigen',
+    scanning: 'Pagina scannen…',
+    noPartsFound: 'Geen onderdelen gevonden op deze pagina.',
+    tryWithCrop: 'Probeer met uitsnede',
+    addManually: '+ Onderdeel handmatig toevoegen',
+    addPart: 'Onderdeel toevoegen',
+    partName: 'Naam onderdeel',
+    partNumberLabel: 'Artikelnummer',
+    cancel: 'Annuleren',
+    clearUnsent: 'Niet-verzonden verwijderen',
+    finishSearch: 'Zoekopdracht afronden',
+    searchFinished: 'Zoekopdracht afgerond.',
+    newQuote: 'Nieuwe offerte',
+    checkStatus: 'Controleer de status van de onderdelen in PartsIQ.',
+    pageChanged: 'Pagina gewijzigd — nu scannen?',
+    scan: 'Pagina scannen',
+    crop: 'Uitsnede selecteren',
+    retry: 'Opnieuw',
+    sending: 'Verzenden…',
+    sent: '✓ Verzonden',
+    errorLabel: 'Fout',
+    loginError: 'Aanmelden mislukt. Probeer opnieuw.',
+    scanError: 'Scannen mislukt.',
+    removeUnsentConfirm: (count: number) =>
+      `${count} niet-verzonden onderdeel${count === 1 ? '' : 'en'} verwijderen?`,
+  },
+} as const;
+
+export type Translations = typeof T.en;
+
+export function useT(lang: Lang): Translations {
+  return T[lang] as unknown as Translations;
+}
