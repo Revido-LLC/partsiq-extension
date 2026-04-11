@@ -14,7 +14,7 @@ export default function OrderPanel({ order, expanded, lang, onExpand }: Props) {
 
   if (expanded) {
     return (
-      <div className="flex flex-col" style={{ height: '100%' }}>
+      <div className="flex flex-col h-full">
         <iframe
           src={buildBubbleUrl('extension')}
           className="flex-1 w-full border-0"
