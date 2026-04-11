@@ -270,13 +270,17 @@ Ao confirmar → executa scan e aplica **regra de merge**:
 
 ### Edição Inline do Part Number (✏️)
 
-Clicar no ícone lápis substitui o texto por um input inline. Confirma com Enter ou blur. Salva localmente — o valor atualizado é enviado ao Bubble no momento do envio (se ainda `pending`).
+Disponível **apenas para peças não enviadas** (`pending` ou `error`). Peças `sent` não exibem o ícone de lápis — o mecânico deve desmarcar o checkbox primeiro (que chama `remove_part` e volta para `pending`), e só então pode editar o part number.
+
+Clicar no lápis substitui o texto por um input inline na mesma posição. Confirma com Enter ou blur. Quando `oem` é preenchido, o checkbox é habilitado automaticamente. O valor atualizado é enviado ao Bubble no momento do envio.
 
 ### Comportamento do Checkbox
 
+**Regra:** checkbox fica **desabilitado** enquanto `oem` estiver vazio. O mecânico deve preencher o part number via edição inline antes de poder enviar.
+
 | Ação | Status anterior | Chamada API | Resultado |
 |------|----------------|-------------|-----------|
-| Marcar ☑ | `pending` | `POST save_part` | `sending` → `sent` |
+| Marcar ☑ | `pending` (com oem preenchido) | `POST save_part` | `sending` → `sent` |
 | Desmarcar ☐ | `sent` | `POST remove_part` com `bubblePartId` | `sending` → `pending` |
 | Marcar ☑ (retry) | `error` | `POST save_part` | `sending` → `sent` |
 
