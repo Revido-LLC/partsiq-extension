@@ -1,70 +1,35 @@
-export interface PartData {
-  partName: string;
-  oemNumber: string;
-  netPrice: number | null;
-  grossPrice: number | null;
-  deliveryTime: string | null;
-  stockAvailable: boolean | null;
-  supplier: string | null;
-  confidence: number; // 0-1
-}
+export type Lang = 'en' | 'nl';
+export type WorkMode = 'vehicle' | 'order';
+export type SidebarState = 'login' | 'idle' | 'scanning' | 'cart' | 'fallback' | 'finish';
+export type CartItemStatus = 'pending' | 'sending' | 'sent' | 'error';
 
-export interface Session {
+export interface CartItem {
   id: string;
   name: string;
-  createdAt: string;
-  partCount: number;
+  oem: string;
+  price: number | null;
+  deliveryDays: number | null;
+  stock: number | null;
+  supplier: string;
+  sourceUrl: string;
+  scannedAt: string;
+  status: CartItemStatus;
+  errorMsg?: string;
+  bubblePartId?: string;
+  checked: boolean;
 }
 
-export type PopupState =
-  | 'login'
-  | 'idle'
-  | 'session_select'
-  | 'scanning'
-  | 'results'
-  | 'iframe'
-  | 'fallback'
-  | 'confirm';
+export interface Vehicle {
+  plate: string;
+  id: string;
+}
 
-export type StatusChipVariant =
-  | 'idle'
-  | 'scanning'
-  | 'found'
-  | 'added'
-  | 'error';
+export interface Order {
+  plate: string;
+  id: string;
+}
 
-// PostMessage types
 export interface BubbleMessage {
-  type:
-    | 'partsiq:ready'
-    | 'partsiq:login_success'
-    | 'partsiq:login_failed'
-    | 'partsiq:login_required'
-    | 'partsiq:parts_saved'
-    | 'partsiq:session_created'
-    | 'partsiq:session_selected'
-    | 'partsiq:error';
+  type: string;
   [key: string]: unknown;
-}
-
-export interface LoginSuccessMessage extends BubbleMessage {
-  type: 'partsiq:login_success';
-  userId: string;
-}
-
-export interface PartsSavedMessage extends BubbleMessage {
-  type: 'partsiq:parts_saved';
-  count: number;
-  sessionId: string;
-}
-
-export interface SessionCreatedMessage extends BubbleMessage {
-  type: 'partsiq:session_created';
-  sessionId: string;
-  name: string;
-}
-
-export interface SessionSelectedMessage extends BubbleMessage {
-  type: 'partsiq:session_selected';
-  sessionId: string;
 }

@@ -1,25 +1,24 @@
 export const CONFIG = {
-  // Bubble
   BUBBLE_BASE_URL: 'https://app.parts-iq.com/version-138bg',
+  BUBBLE_ORIGIN: 'https://app.parts-iq.com',
   BUBBLE_PAGES: {
-    login: '/auth/',
-    parts: '/ext-parts',
-    session: '/ext-session',
+    login: '/auth/log-in',
+    extension: '/extension',
   },
-
-  // OpenRouter
-  OPENROUTER_API_URL: 'https://openrouter.ai/api/v1/chat/completions',
-  OPENROUTER_API_KEY: import.meta.env.VITE_OPENROUTER_API_KEY as string,
-  OPENROUTER_MODEL: 'openai/gpt-4o',
-  OPENROUTER_MAX_TOKENS: 4096,
-
-  // Extension
-  MAX_URL_PARAM_LENGTH: 2000,
+  BUBBLE_API: {
+    AI_EXTRACT: 'https://app.parts-iq.com/api/1.1/wf/ai_extract',
+    SAVE_PART: 'https://app.parts-iq.com/api/1.1/wf/save_part',
+    REMOVE_PART: 'https://app.parts-iq.com/api/1.1/wf/remove_part',
+  },
   SCREENSHOT_QUALITY: 90,
-
-  // Storage keys
   STORAGE_KEYS: {
-    AUTH_STATUS: 'partsiq_auth_status',
-    ACTIVE_SESSION: 'partsiq_active_session',
+    AUTH_STATUS: 'partsiq_auth',
+    USER_ID: 'partsiq_user_id',
+    LANG: 'partsiq_lang',
+    WORK_MODE: 'partsiq_work_mode',
+    VEHICLE: 'partsiq_vehicle',
+    ORDER: 'partsiq_order',
+    CART: 'partsiq_cart',
+    CART_DATE: 'partsiq_cart_date',
   },
 } as const;
