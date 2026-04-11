@@ -1,77 +1,34 @@
-import { useEffect, useRef, useState } from 'react';
-import StatusChip from '@components/StatusChip';
-import { captureScreenshot } from '@lib/screenshot';
-import { extractPartsFromScreenshot } from '@lib/ai';
-import type { PartData, Session } from '@types/parts';
+import type { Lang } from '@types/parts';
+import { useT } from '@lib/i18n';
 
 interface Props {
-  session: Session;
-  onFound: (parts: PartData[]) => void;
-  onNotFound: () => void;
+  lang: Lang;
+  error: string | null;
+  onRetry: () => void;
 }
 
-const ScanningState = ({ session, onFound, onNotFound }: Props) => {
-  const [screenshot, setScreenshot] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const cancelledRef = useRef(false);
-
-  const runScan = async () => {
-    cancelledRef.current = false;
-    setError(null);
-    try {
-      const base64 = await captureScreenshot();
-      if (cancelledRef.current) return;
-      setScreenshot(base64);
-      const parts = await extractPartsFromScreenshot(base64);
-      if (cancelledRef.current) return;
-      if (parts.length > 0) {
-        onFound(parts);
-      } else {
-        onNotFound();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Scan failed. Please try again.');
-    }
-  };
-
-  useEffect(() => {
-    cancelledRef.current = false;
-    runScan();
-    return () => {
-      cancelledRef.current = true;
-    };
-  }, []); // Run once on mount
+export default function ScanningState({ lang, error, onRetry }: Props) {
+  const t = useT(lang);
 
   if (error) {
     return (
-      <div className="flex flex-col items-center gap-4 p-6">
-        <StatusChip variant="error" />
-        <p className="text-sm text-gray-600 text-center">{error}</p>
+      <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center">
+        <p className="text-sm text-red-600">{t.scanError}</p>
+        <p className="text-xs text-gray-500">{error}</p>
         <button
-          onClick={runScan}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+          onClick={onRetry}
+          className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
         >
-          Retry
+          {t.retry}
         </button>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 p-6">
-      <StatusChip variant="scanning" />
-      <p className="text-sm text-gray-500">Analyzing screenshot with AI...</p>
-      <p className="text-xs text-gray-400">Session: {session.name}</p>
-      {screenshot && (
-        <img
-          src={screenshot}
-          alt="Captured screenshot"
-          className="w-full rounded border border-gray-200 opacity-60"
-          style={{ maxHeight: '160px', objectFit: 'cover', objectPosition: 'top' }}
-        />
-      )}
+    <div className="flex flex-col items-center justify-center h-full gap-3 px-4">
+      <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <p className="text-sm text-gray-600">{t.scanning}</p>
     </div>
   );
-};
-
-export default ScanningState;
+}
