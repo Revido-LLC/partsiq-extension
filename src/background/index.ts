@@ -88,7 +88,7 @@ async function cropScreenshot(
 
 // ── Message handler ──────────────────────────────────────────────────────────
 
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case 'take_screenshot':
       (async () => {
@@ -118,17 +118,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     case 'crop_done':
       (async () => {
         try {
-          const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-          if (!tab) throw new Error('No active tab');
+          const tab = sender.tab;
+          if (!tab?.windowId) throw new Error('No sender tab');
           const dataUrl = await new Promise<string>(resolve =>
-            chrome.tabs.captureVisibleTab(tab.windowId, { format: 'jpeg', quality: CONFIG.SCREENSHOT_QUALITY }, resolve)
+            chrome.tabs.captureVisibleTab(tab.windowId!, { format: 'jpeg', quality: CONFIG.SCREENSHOT_QUALITY }, resolve)
           );
           const cropped = await cropScreenshot(
             dataUrl,
             msg.rect as { x: number; y: number; width: number; height: number },
             (msg.dpr as number) ?? 1
           );
-          // Broadcast to all extension pages (sidebar)
           chrome.runtime.sendMessage({ type: 'crop_ready', imageBase64: cropped }).catch(() => {});
         } catch (err) {
           chrome.runtime.sendMessage({ type: 'crop_ready', error: String(err) }).catch(() => {});

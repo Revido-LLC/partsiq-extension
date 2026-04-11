@@ -47,6 +47,16 @@ observer.observe(document.body, { childList: true, subtree: true });
 // ── Crop overlay ─────────────────────────────────────────────────────────────
 
 let cropOverlay: HTMLDivElement | null = null;
+let cropKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+
+function removeCropOverlay() {
+  cropOverlay?.remove();
+  cropOverlay = null;
+  if (cropKeyHandler) {
+    document.removeEventListener('keydown', cropKeyHandler);
+    cropKeyHandler = null;
+  }
+}
 
 function injectCropOverlay() {
   if (cropOverlay) return;
@@ -94,17 +104,11 @@ function injectCropOverlay() {
     }
   });
 
-  const onKeyDown = (e: KeyboardEvent) => {
+  cropKeyHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       removeCropOverlay();
-      document.removeEventListener('keydown', onKeyDown);
     }
   };
-  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keydown', cropKeyHandler);
   document.body.appendChild(cropOverlay);
-}
-
-function removeCropOverlay() {
-  cropOverlay?.remove();
-  cropOverlay = null;
 }
