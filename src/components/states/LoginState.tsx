@@ -1,56 +1,44 @@
-import { useEffect, useState } from 'react';
-import BubbleIframe from '@components/BubbleIframe';
+import { useState, useEffect } from 'react';
+import type { Lang } from '@types/parts';
+import { useT } from '@lib/i18n';
 import { buildBubbleUrl } from '@lib/iframe';
-import { setAuthStatus } from '@lib/storage';
-import type { BubbleMessage } from '@types/parts';
 
 interface Props {
-  onSuccess: () => void;
+  lang: Lang;
+  hasError: boolean;
+  onRetry: () => void;
 }
 
-const LoginState = ({ onSuccess }: Props) => {
-  const [phase, setPhase] = useState<'checking' | 'form'>('checking');
-  const [error, setError] = useState<string | null>(null);
+const LOGIN_TIMEOUT_MS = 10_000;
 
-  // Fallback: if Bubble doesn't respond in 5s, show login form
+export default function LoginState({ lang, hasError, onRetry }: Props) {
+  const t = useT(lang);
+  const [timedOut, setTimedOut] = useState(false);
+
   useEffect(() => {
-    const t = setTimeout(() => setPhase('form'), 5000);
-    return () => clearTimeout(t);
+    setTimedOut(false);
+    const timer = setTimeout(() => setTimedOut(true), LOGIN_TIMEOUT_MS);
+    return () => clearTimeout(timer);
   }, []);
 
-  const handleMessage = async (msg: BubbleMessage) => {
-    if (msg.type === 'partsiq:login_success') {
-      await setAuthStatus(true);
-      onSuccess();
-    } else if (msg.type === 'partsiq:login_required') {
-      setPhase('form');
-    } else if (msg.type === 'partsiq:login_failed') {
-      setPhase('form');
-      setError('Login failed. Please try again.');
-    }
-  };
-
-  const iframeUrl = buildBubbleUrl('login', { source: 'extension' });
-
   return (
-    <div className="relative flex flex-col h-full">
-      {phase === 'checking' && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
-          <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-      {error && phase === 'form' && (
-        <div className="px-4 py-2 bg-red-50 border-b border-red-200 text-red-700 text-xs">
-          {error}
-        </div>
-      )}
-      <BubbleIframe
-        src={iframeUrl}
-        onMessage={handleMessage}
-        height="460px"
+    <div className="flex flex-col h-full">
+      <iframe
+        src={buildBubbleUrl('login')}
+        className="flex-1 w-full border-0"
+        title="PartsIQ Login"
       />
+      {(hasError || timedOut) && (
+        <div className="px-4 py-3 bg-red-50 border-t border-red-100 text-xs text-red-700 flex items-center justify-between">
+          <span>{t.loginError}</span>
+          <button
+            onClick={onRetry}
+            className="ml-2 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+          >
+            {t.retry}
+          </button>
+        </div>
+      )}
     </div>
   );
-};
-
-export default LoginState;
+}
