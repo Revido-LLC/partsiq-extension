@@ -1,80 +1,47 @@
-import type { PartData } from '@types/parts';
 import { CONFIG } from '@lib/constants';
 
-const EXTRACTION_PROMPT = `You are a parts data extractor for automotive suppliers. Analyze this screenshot of a supplier website and extract ALL parts visible on the page.
+const EXTRACTION_PROMPT = `Extract auto parts from this supplier website screenshot.
+Return a JSON array where each object has:
+- name: part name/description
+- oem: part number / artikelnummer (may be in English or Dutch)
+- price: net price as number without currency symbol (prijs), or null
+- delivery_days: delivery time as integer days (levertijd), or null
+- stock: stock quantity as integer (voorraad), or null
+- supplier: supplier name if visible (leverancier), or empty string
 
-For each part found, return a JSON array with objects containing:
-- partName: the name/description of the part
-- oemNumber: the OEM or OES reference number
-- netPrice: the net/wholesale price (number, no currency symbol)
-- grossPrice: the gross/retail price (number, no currency symbol)
-- deliveryTime: estimated delivery time as text
-- stockAvailable: true/false/null if not shown
-- supplier: the supplier name if visible on the page
-- confidence: your confidence in the extraction (0.0 to 1.0)
+Data may appear in English or Dutch. Return ONLY a valid JSON array, no markdown, no explanation. If no parts found, return [].`;
 
-Rules:
-- Return ONLY valid JSON, no markdown, no explanation
-- If a field is not visible on the page, use null
-- Extract ALL parts visible, not just the first one
-- Prices should be numbers without currency symbols
-- If no parts are detected, return an empty array []`;
+export interface AiPart {
+  name: string;
+  oem: string;
+  price: number | null;
+  delivery_days: number | null;
+  stock: number | null;
+  supplier: string;
+}
 
 export async function extractPartsFromScreenshot(
   screenshotBase64: string
-): Promise<PartData[]> {
-  const startTime = Date.now();
-
-  const response = await fetch(CONFIG.OPENROUTER_API_URL, {
+): Promise<AiPart[]> {
+  const response = await fetch(CONFIG.BUBBLE_API.AI_EXTRACT, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${CONFIG.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': CONFIG.BUBBLE_BASE_URL,
-      'X-Title': 'PartsIQ Extension',
-    },
-    body: JSON.stringify({
-      model: CONFIG.OPENROUTER_MODEL,
-      max_tokens: CONFIG.OPENROUTER_MAX_TOKENS,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: EXTRACTION_PROMPT },
-            { type: 'image_url', image_url: { url: screenshotBase64 } },
-          ],
-        },
-      ],
-    }),
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image_base64: screenshotBase64, prompt: EXTRACTION_PROMPT }),
   });
 
   if (!response.ok) {
-    throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+    throw new Error(`AI extract failed: ${response.status} ${response.statusText}`);
   }
 
   const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content as string | undefined;
+  const parts = data?.parts;
+  if (!Array.isArray(parts)) return [];
 
-  if (!content) {
-    return [];
-  }
-
-  console.log(`[PartsIQ AI] model=${CONFIG.OPENROUTER_MODEL} time=${Date.now() - startTime}ms`);
-
-  try {
-    const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-    const parsed = JSON.parse(cleaned);
-    if (!Array.isArray(parsed)) return [];
-    console.log(`[PartsIQ AI] parts=${parsed.length}`);
-    return parsed.filter(
-      (item: unknown): item is PartData =>
-        typeof item === 'object' &&
-        item !== null &&
-        typeof (item as Record<string, unknown>).partName === 'string' &&
-        typeof (item as Record<string, unknown>).oemNumber === 'string'
-    );
-  } catch {
-    console.error('[PartsIQ AI] Failed to parse response as JSON:', content);
-    return [];
-  }
+  return parts.filter(
+    (item: unknown): item is AiPart =>
+      typeof item === 'object' &&
+      item !== null &&
+      typeof (item as Record<string, unknown>).name === 'string'
+  );
 }
