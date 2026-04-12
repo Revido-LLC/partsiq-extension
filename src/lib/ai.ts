@@ -35,7 +35,21 @@ export async function extractPartsFromScreenshot(
   }
 
   const data = await response.json();
-  const parts = data?.parts;
+  let raw = data?.parts;
+
+  // Bubble returns raw OpenRouter body as string — extract content from choices[0].message.content
+  if (typeof raw === 'string') {
+    try {
+      const openRouterBody = JSON.parse(raw);
+      if (openRouterBody?.choices?.[0]?.message?.content) {
+        raw = openRouterBody.choices[0].message.content;
+      }
+    } catch {
+      // raw is already a plain string (e.g. direct content), keep as is
+    }
+  }
+
+  const parts = Array.isArray(raw) ? raw : typeof raw === 'string' ? JSON.parse(raw) : [];
   if (!Array.isArray(parts)) return [];
 
   return parts.filter(

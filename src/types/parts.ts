@@ -1,6 +1,6 @@
 export type Lang = 'en' | 'nl';
 export type WorkMode = 'vehicle' | 'order';
-export type SidebarState = 'login' | 'idle' | 'scanning' | 'cart' | 'fallback' | 'finish';
+export type SidebarState = 'checking' | 'login' | 'idle' | 'scanning' | 'cart' | 'fallback' | 'finish';
 export type CartItemStatus = 'pending' | 'sending' | 'sent' | 'error';
 
 export interface CartItem {

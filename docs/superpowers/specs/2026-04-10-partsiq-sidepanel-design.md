@@ -1,7 +1,8 @@
 # PartsIQ Extension — Sidepanel Design Spec
 
-> **Status:** Approved
+> **Status:** Implemented
 > **Date:** 2026-04-10
+> **Updated:** 2026-04-12
 > **Approach:** Clean rewrite — sidepanel UI from scratch, reusing background.ts / storage.ts / ai.ts utilities
 
 ---
@@ -58,16 +59,17 @@ src/
 ## Máquina de Estados
 
 ```
-login → idle → scanning → cart → finish
-                   │        ↑       ↓
-                   │    (re-scan)  (nova cotação → idle)
-                   ↓
-                fallback → cart
+checking → login → idle → scanning → cart → finish
+                              │        ↑       ↓
+                              │    (re-scan)  (nova cotação → idle)
+                              ↓
+                           fallback → cart
 ```
 
 | Estado | Descrição |
 |--------|-----------|
-| `login` | iframe `/auth/log-in`. Aguarda `partsiq:login_success` |
+| `checking` | Spinner + iframe oculto `/auth/log-in?source=extension`. Timeout 3s → `login` |
+| `login` | iframe `/auth/log-in?source=extension` fullscreen. Aguarda `partsiq:login_success` |
 | `idle` | VehiclePanel ou OrderPanel expandido. Aguarda seleção |
 | `scanning` | Captura screenshot + chama proxy + mostra progresso |
 | `cart` | Lista de peças. Re-scan disponível. Botão Finalizar |
@@ -120,7 +122,7 @@ login → idle → scanning → cart → finish
 ```typescript
 type Lang = 'en' | 'nl';
 type WorkMode = 'vehicle' | 'order';
-type SidebarState = 'login' | 'idle' | 'scanning' | 'cart' | 'fallback' | 'finish';
+type SidebarState = 'checking' | 'login' | 'idle' | 'scanning' | 'cart' | 'fallback' | 'finish';
 
 type PartData = {
   id: string;                // uuid local
@@ -141,16 +143,24 @@ type PartData = {
 
 ---
 
-## Fluxo de Login
+## Fluxo de Login / Auth Check
 
-**LoginState** renderiza iframe fullscreen apontando para `/auth/log-in`.
+Ao abrir a extensão, sempre inicia em `checking`:
+
+1. Renderiza spinner + iframe **oculto** (`display:none`) apontando para `/auth/log-in?source=extension`
+2. Bubble carrega a página e, se usuário está logado, dispara `partsiq:login_success` automaticamente
+3. Se recebido → transita para `idle` (sessão válida)
+4. Se **3 segundos** passam sem resposta → `authStatus = false` → transita para `login`
+
+**LoginState** renderiza iframe fullscreen com 10px de margem lateral apontando para `/auth/log-in?source=extension`. Sem rodapé de erro — o Bubble exibe feedback de login nativo.
 
 - `partsiq:login_success` recebido:
   - `lang` define idioma da UI (`'en'` | `'nl'`) — sem opção de troca na extensão
   - `autoflex_connected === 'yes'` → `workMode = 'order'` → mostra OrderPanel
   - `autoflex_connected === 'no'` → `workMode = 'vehicle'` → mostra VehiclePanel
   - Salva `userId` no storage
-- **Timeout 10s**: se nenhuma mensagem chegar, mostra botão "Tentar novamente"
+
+**Nota Bubble:** O workflow "User is logged in" roda apenas quando `?source=extension` está na URL. O `postMessage` é enviado diretamente no script JS (sem `param1`) com `autoflex_connected` como dado dinâmico inline.
 
 ---
 
@@ -202,15 +212,20 @@ Content-Type: application/json
 
 A chave do OpenRouter fica **exclusivamente no Bubble** (server-side). A extensão nunca a vê.
 
-**Modelo:** `google/gemini-2.0-flash-001` (configurado no Bubble)
+**Modelo:** `google/gemini-2.0-flash-001` (configurado no Bubble via API Connector OpenRouter)
 
-**Prompt** (enfatiza inglês + holandês):
-> Extract auto parts from this supplier website screenshot. Return a JSON array with fields: name, oem (part number / artikelnummer), price (prijs), delivery_days (levertijd / delivery time), stock (voorraad), supplier (leverancier). Data may appear in English or Dutch. Return only the JSON array, no explanation.
+**Bubble backend workflow `ai_extract`:**
+- Parâmetros: `image_base64` (text), `prompt` (text)
+- Step 1: chama OpenRouter Chat Completion com `api_key` do Option Set `AppConfig` (option `openrouter_key`)
+- Step 2: Return data — `parts` (text) = `Step 1's raw body text`
+- A extensão recebe o body bruto do OpenRouter e extrai `choices[0].message.content`
 
-**Resposta esperada:**
+**Resposta do Bubble:**
 ```json
-{ "parts": [{ "name": "...", "oem": "...", "price": 12.50, "delivery_days": 2, "stock": 5, "supplier": "moco.nl" }] }
+{ "parts": "<raw OpenRouter JSON string>" }
 ```
+
+**Parse em `ai.ts`:** extrai `choices[0].message.content` do body bruto → parseia como JSON array de peças.
 
 **Pós-scan:**
 - **≥1 peças** → aplica merge no carrinho → vai para `cart`
@@ -393,7 +408,8 @@ Confirmação antes: *"Remover X peças não enviadas?"*
 | `ai_extract` falha | Erro no scan com botão "Tentar novamente" |
 | URL muda durante `scanning` | Banner aguarda — não interrompe o scan |
 | Sidebar fechado com peças `pending` | Carrinho persiste no storage (mesmo dia) |
-| Login timeout (>10s sem resposta) | Mostra botão "Tentar novamente" |
+| Abertura da extensão | Sempre inicia `checking` — verifica sessão via Bubble (timeout 3s) |
+| Sessão expirada (logout pelo Bubble) | `checking` timeout → vai para `login` |
 
 ---
 
