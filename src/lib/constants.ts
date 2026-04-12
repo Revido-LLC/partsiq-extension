@@ -6,9 +6,9 @@ export const CONFIG = {
     extension: '/extension',
   },
   BUBBLE_API: {
-    AI_EXTRACT: 'https://app.parts-iq.com/api/1.1/wf/ai_extract',
-    SAVE_PART: 'https://app.parts-iq.com/api/1.1/wf/save_part',
-    REMOVE_PART: 'https://app.parts-iq.com/api/1.1/wf/remove_part',
+    AI_EXTRACT: 'https://app.parts-iq.com/version-138bg/api/1.1/wf/ai_extract',
+    SAVE_PART: 'https://app.parts-iq.com/version-138bg/api/1.1/wf/save_part',
+    REMOVE_PART: 'https://app.parts-iq.com/version-138bg/api/1.1/wf/remove_part',
   },
   SCREENSHOT_QUALITY: 90,
   STORAGE_KEYS: {

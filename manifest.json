@@ -8,10 +8,12 @@
     "tabs",
     "storage",
     "scripting",
-    "sidePanel"
+    "sidePanel",
+    "windows"
   ],
   "host_permissions": [
-    "https://app.parts-iq.com/*"
+    "https://app.parts-iq.com/*",
+    "<all_urls>"
   ],
   "action": {
     "default_icon": {

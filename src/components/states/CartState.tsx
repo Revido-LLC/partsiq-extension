@@ -60,16 +60,21 @@ export default function CartState({
       await updateItem(item.id, { status: 'sending' });
       try {
         const body: Record<string, unknown> = {
-          name: item.name,
-          oem: item.oem,
-          price: item.price,
-          delivery_days: item.deliveryDays,
-          stock: item.stock,
+          part_name: item.name,
+          oem_number: item.oem,
+          net_price: item.price ?? 0,
+          gross_price: item.price ?? 0,
+          delivery_time: item.deliveryDays != null ? String(item.deliveryDays) : '0',
+          stock_available: (item.stock ?? 0) > 0,
           supplier: item.supplier,
           source_url: item.sourceUrl,
           work_mode: workMode,
+          confidence: 90,
         };
-        if (workMode === 'vehicle' && vehicle) body.vehicle_id = vehicle.id;
+        if (workMode === 'vehicle' && vehicle) {
+          body.vehicle_id = vehicle.id;
+          body.vehicle_plate = vehicle.plate;
+        }
         if (workMode === 'order' && order) body.order_id = order.id;
 
         const resp = await fetch(CONFIG.BUBBLE_API.SAVE_PART, {

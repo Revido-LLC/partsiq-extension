@@ -35,7 +35,9 @@ export async function extractPartsFromScreenshot(
   }
 
   const data = await response.json();
-  let raw = data?.parts;
+  console.log('[partsiq] full response:', JSON.stringify(data));
+  let raw = data?.response?.parts ?? data?.parts;
+  console.log('[partsiq] ai_extract raw:', raw);
 
   // Bubble returns raw OpenRouter body as string — extract content from choices[0].message.content
   if (typeof raw === 'string') {
@@ -49,7 +51,20 @@ export async function extractPartsFromScreenshot(
     }
   }
 
-  const parts = Array.isArray(raw) ? raw : typeof raw === 'string' ? JSON.parse(raw) : [];
+  console.log('[partsiq] ai content:', raw);
+
+  // Strip markdown code fences if present (```json ... ```)
+  if (typeof raw === 'string') {
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+  }
+
+  let parts: unknown;
+  try {
+    parts = Array.isArray(raw) ? raw : typeof raw === 'string' ? JSON.parse(raw) : [];
+  } catch {
+    console.warn('[partsiq] failed to parse AI content:', raw);
+    parts = [];
+  }
   if (!Array.isArray(parts)) return [];
 
   return parts.filter(

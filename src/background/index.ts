@@ -107,6 +107,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       (async () => {
         try {
           const tabId = msg.tabId as number;
+          // Ensure content script is loaded (tabs opened before extension load won't have it)
+          try {
+            await chrome.tabs.sendMessage(tabId, { type: 'ping' });
+          } catch {
+            const manifest = chrome.runtime.getManifest();
+            const files = manifest.content_scripts?.[0]?.js ?? [];
+            if (files.length > 0) {
+              await chrome.scripting.executeScript({ target: { tabId }, files });
+            }
+          }
           await chrome.tabs.sendMessage(tabId, { type: 'start_crop' });
           sendResponse({ ok: true });
         } catch (err) {

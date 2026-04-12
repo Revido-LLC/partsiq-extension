@@ -30,6 +30,7 @@ export default function Sidebar() {
   const [cart, setCartState] = useState<CartItem[]>([]);
   const [vehicleExpanded, setVehicleExpanded] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [scanScreenshot, setScanScreenshot] = useState<string | null>(null);
   const [loginError, setLoginError] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
 
@@ -93,6 +94,8 @@ export default function Sidebar() {
           setScanError(msg.error);
           setState('scanning');
         } else if (msg.imageBase64) {
+          setState('scanning');
+          setScanScreenshot(null);
           const raw = msg.imageBase64;
           const base64 = raw.includes(',') ? raw.split(',')[1] : raw;
           processScanRef.current(base64);
@@ -149,12 +152,12 @@ export default function Sidebar() {
       void setVehicle(v);
       setVehicleExpanded(false);
 
-      const currentCart = cartRef.current;
-      if (hadVehicle || currentCart.length === 0) {
-        setTimeout(() => setState('scanning'), 100);
-      } else {
-        setState('cart');
+      if (hadVehicle) {
+        void setCart([]);
+        setCartState([]);
       }
+      setState('cart');
+      setVehicleExpanded(false);
     }
 
     if (msg.type === 'partsiq:order_selected') {
@@ -172,14 +175,8 @@ export default function Sidebar() {
 
       setOrderState(o);
       void setOrder(o);
+      setState('cart');
       setVehicleExpanded(false);
-
-      const currentCart = cartRef.current;
-      if (hadOrder || currentCart.length === 0) {
-        setTimeout(() => setState('scanning'), 100);
-      } else {
-        setState('cart');
-      }
     }
   });
 
@@ -242,27 +239,33 @@ export default function Sidebar() {
   const handleScan = async () => {
     setState('scanning');
     setScanError(null);
+    setScanScreenshot(null);
     try {
       const dataUrl = await captureScreenshot();
       const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+      setScanScreenshot(base64);
       await processScan(base64);
     } catch (err) {
       setScanError(String(err));
     }
   };
 
-  const handleCrop = async () => {
+  const startCrop = async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
       if (!tab?.id) return;
-      setState('scanning');
       setScanError(null);
       await chrome.runtime.sendMessage({ type: 'take_crop_init', tabId: tab.id });
       // Result arrives via crop_ready in the chrome.runtime.onMessage listener
+      // State stays as-is while user makes selection on the page
     } catch (err) {
       setScanError(String(err));
       setState('scanning');
     }
+  };
+
+  const handleCrop = () => {
+    void startCrop();
   };
 
   const handleUpdateCart = async (items: CartItem[]) => {
@@ -327,7 +330,7 @@ export default function Sidebar() {
         order={order}
         expanded={vehicleExpanded}
         lang={lang}
-        onExpand={() => setVehicleExpanded(true)}
+        onExpand={() => { setVehicleExpanded(true); setState('idle'); }}
       />
     )
     : (
@@ -335,7 +338,7 @@ export default function Sidebar() {
         vehicle={vehicle}
         expanded={vehicleExpanded}
         lang={lang}
-        onExpand={() => setVehicleExpanded(true)}
+        onExpand={() => { setVehicleExpanded(true); setState('idle'); }}
       />
     );
 
@@ -350,7 +353,7 @@ export default function Sidebar() {
 
       {state === 'scanning' && (
         <div className="flex-1">
-          <ScanningState lang={lang} error={scanError} onRetry={handleScan} />
+          <ScanningState lang={lang} error={scanError} screenshot={scanScreenshot} onRetry={handleScan} />
         </div>
       )}
 
@@ -373,6 +376,7 @@ export default function Sidebar() {
       {state === 'fallback' && (
         <FallbackState
           lang={lang}
+          onScan={handleScan}
           onAddManual={(item) => {
             const updated = [...cartRef.current, item];
             setCartState(updated);

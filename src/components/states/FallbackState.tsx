@@ -5,9 +5,10 @@ interface Props {
   lang: Lang;
   onAddManual: (item: CartItem) => void;
   onCrop: () => void;
+  onScan: () => void;
 }
 
-export default function FallbackState({ lang, onAddManual, onCrop }: Props) {
+export default function FallbackState({ lang, onAddManual, onCrop, onScan }: Props) {
   const t = useT(lang);
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
@@ -56,6 +57,13 @@ export default function FallbackState({ lang, onAddManual, onCrop }: Props) {
           {t.addPart}
         </button>
       </form>
+
+      <button
+        onClick={onScan}
+        className="px-3 py-1.5 border border-gray-300 text-sm rounded hover:bg-gray-50"
+      >
+        📷 {t.scan}
+      </button>
 
       <button
         onClick={onCrop}
