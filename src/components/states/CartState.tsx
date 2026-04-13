@@ -77,7 +77,11 @@ export default function CartState({
           body.vehicle_id = vehicle.id;
           body.vehicle_plate = vehicle.plate;
         }
-        if (workMode === 'order' && order) body.order_id = order.id;
+        if (workMode === 'order' && order) {
+          body.order_id = order.id;
+          body.vehicle_id = order.id;
+          body.vehicle_plate = order.plate;
+        }
 
         const resp = await fetch(CONFIG.BUBBLE_API.SAVE_PART, {
           method: 'POST',
