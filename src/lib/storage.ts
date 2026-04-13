@@ -44,6 +44,14 @@ export async function setOrder(v: Order | null): Promise<void> {
   await chrome.storage.local.set({ [K.ORDER]: v });
 }
 
+export async function getAutoflex(): Promise<boolean> {
+  const r = await chrome.storage.local.get(K.AUTOFLEX);
+  return r[K.AUTOFLEX] ?? false;
+}
+export async function setAutoflex(v: boolean): Promise<void> {
+  await chrome.storage.local.set({ [K.AUTOFLEX]: v });
+}
+
 export async function getCart(): Promise<CartItem[]> {
   const r = await chrome.storage.local.get([K.CART, K.CART_DATE]);
   if (r[K.CART_DATE] !== today()) {

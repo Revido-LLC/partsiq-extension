@@ -18,7 +18,7 @@ export default function ScanningState({ lang, error, screenshot, onRetry }: Prop
         <p className="text-xs text-gray-500">{error}</p>
         <button
           onClick={onRetry}
-          className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+          className="px-5 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
         >
           {t.retry}
         </button>
@@ -42,7 +42,7 @@ export default function ScanningState({ lang, error, screenshot, onRetry }: Prop
         </div>
       )}
       {!screenshot && (
-        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[#00C6B2] border-t-transparent rounded-full animate-spin" />
       )}
       <p className="text-sm text-gray-600 text-center">{t.analyzing}</p>
     </div>

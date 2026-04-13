@@ -4,6 +4,7 @@ import {
   getAuthStatus, setAuthStatus,
   getLang, setLang,
   getWorkMode, setWorkMode,
+  getAutoflex, setAutoflex,
   getVehicle, setVehicle,
   getOrder, setOrder,
   getCart, setCart,
@@ -24,6 +25,7 @@ export default function Sidebar() {
   const [state, setState] = useState<SidebarState>('checking');
   const [lang, setLangState] = useState<Lang>('en');
   const [workMode, setWorkModeState] = useState<WorkMode>('vehicle');
+  const [autoflex, setAutoflexState] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [vehicle, setVehicleState] = useState<Vehicle | null>(null);
   const [order, setOrderState] = useState<Order | null>(null);
@@ -52,13 +54,14 @@ export default function Sidebar() {
   // ── Init from storage ──────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
-      const [storedLang, storedWorkMode, storedVehicle, storedOrder, storedCart] =
+      const [storedLang, storedWorkMode, storedVehicle, storedOrder, storedCart, storedAutoflex] =
         await Promise.all([
           getLang(),
           getWorkMode(),
           getVehicle(),
           getOrder(),
           getCart(),
+          getAutoflex(),
         ]);
 
       setLangState(storedLang);
@@ -66,6 +69,7 @@ export default function Sidebar() {
       setVehicleState(storedVehicle);
       setOrderState(storedOrder);
       setCartState(storedCart);
+      setAutoflexState(storedAutoflex);
     })();
   }, []);
 
@@ -121,9 +125,17 @@ export default function Sidebar() {
       void setAuthStatus(true);
       void setLang(language);
       void setWorkMode(mode);
+      void setAutoflex(autoflexConnected);
+      setAutoflexState(autoflexConnected);
 
-      setState('idle');
-      setVehicleExpanded(true);
+      const hasSession = !!vehicleRef.current || !!orderRef.current;
+      if (hasSession) {
+        setState('cart');
+        setVehicleExpanded(false);
+      } else {
+        setState('idle');
+        setVehicleExpanded(true);
+      }
       return;
     }
 
@@ -303,7 +315,7 @@ export default function Sidebar() {
       <div className="relative h-full">
         <iframe src={buildBubbleUrl('login')} className="hidden" title="Auth check" />
         <div className="flex items-center justify-center h-full">
-          <div className="w-8 h-8 border-4 border-purple-300 border-t-purple-600 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -364,6 +376,7 @@ export default function Sidebar() {
           vehicle={vehicle}
           order={order}
           workMode={workMode}
+          autoflex={autoflex}
           pendingUrl={pendingUrl}
           onScan={handleBannerScan}
           onCrop={handleCrop}

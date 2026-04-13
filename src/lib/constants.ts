@@ -20,5 +20,6 @@ export const CONFIG = {
     ORDER: 'partsiq_order',
     CART: 'partsiq_cart',
     CART_DATE: 'partsiq_cart_date',
+    AUTOFLEX: 'partsiq_autoflex',
   },
 } as const;

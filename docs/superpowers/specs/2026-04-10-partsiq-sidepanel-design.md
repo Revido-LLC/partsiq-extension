@@ -2,7 +2,7 @@
 
 > **Status:** Implemented & Tested
 > **Date:** 2026-04-10
-> **Updated:** 2026-04-12
+> **Updated:** 2026-04-13
 > **Approach:** Clean rewrite — sidepanel UI from scratch, reusing background.ts / storage.ts / ai.ts utilities
 
 ---
@@ -88,7 +88,7 @@ checking → login → idle → cart → finish
 
 | Tipo | Payload | Ação |
 |------|---------|------|
-| `partsiq:login_success` | `{ userId, language, autoflex_connected }` | salva auth, define `workMode` + `lang`, vai para `idle` |
+| `partsiq:login_success` | `{ userId, language, autoflex_connected }` | salva auth, define `workMode` + `lang` + `autoflex`. Se já há veículo/ordem no storage → vai para `cart`. Caso contrário → `idle` |
 | `partsiq:login_failed` | — | mostra `loginError = true` |
 | `partsiq:vehicle_selected` | `{ plate, id }` | salva veículo, recolhe VehiclePanel, vai para `cart` |
 | `partsiq:order_selected` | `{ plate, id }` | salva ordem, recolhe OrderPanel, vai para `cart` |
@@ -117,11 +117,19 @@ checking → login → idle → cart → finish
   authStatus: boolean,
   lang: 'en' | 'nl',
   workMode: 'vehicle' | 'order',
+  autoflex: boolean,             // true se autoflex_connected = 'yes' no login
   vehicle: { plate: string, id: string } | null,
   order: { plate: string, id: string } | null,
   cart: CartItem[],
+  cartDate: string,              // ISO date YYYY-MM-DD — cart é limpo automaticamente ao mudar de dia
 }
 ```
+
+**Regras de persistência do carrinho:**
+- Persiste entre aberturas do sidepanel (mesmo dia)
+- Limpo automaticamente ao mudar de dia (comparação por `cartDate`)
+- Limpo ao clicar em "Finish search"
+- Limpo ao trocar de veículo ou ordem
 
 ---
 
@@ -157,15 +165,18 @@ Ao abrir a extensão, sempre inicia em `checking`:
 
 1. Renderiza spinner + iframe **oculto** (`display:none`) apontando para `/auth/log-in?source=extension`
 2. Bubble carrega a página e, se usuário está logado, dispara `partsiq:login_success` automaticamente
-3. Se recebido → transita para `idle` (sessão válida)
+3. Se recebido → verifica se há veículo/ordem em storage:
+   - **Sim** → transita para `cart` com carrinho e contexto persistidos
+   - **Não** → transita para `idle` (seleção de veículo/ordem)
 4. Se **3 segundos** passam sem resposta → `authStatus = false` → transita para `login`
 
 **LoginState** renderiza iframe fullscreen com 10px de margem lateral. Sem rodapé de erro — o Bubble exibe feedback de login nativo.
 
 - `partsiq:login_success` recebido:
   - `lang` define idioma da UI (`'en'` | `'nl'`) — sem opção de troca na extensão
-  - `autoflex_connected === 'yes'` → `workMode = 'order'` → mostra OrderPanel
-  - `autoflex_connected !== 'yes'` → `workMode = 'vehicle'` → mostra VehiclePanel
+  - `autoflex_connected === 'yes'` → `workMode = 'order'`, `autoflex = true` → mostra OrderPanel
+  - `autoflex_connected !== 'yes'` → `workMode = 'vehicle'`, `autoflex = false` → mostra VehiclePanel
+  - `autoflex` salvo em storage (`partsiq_autoflex`)
 
 **Nota Bubble:** O workflow "User is logged in" roda apenas quando `?source=extension` está na URL. O `postMessage` é enviado diretamente no script JS (sem `param1`) com `autoflex_connected` como dado dinâmico inline. Condição: `Get source from page URL is extension`.
 
@@ -265,27 +276,46 @@ Ao confirmar scan → aplica **regra de merge**:
 
 ---
 
+## Design System
+
+Baseado no Bubble design system do PartsIQ:
+
+| Token | Valor |
+|-------|-------|
+| Primary | `#00C6B2` |
+| Primary text | `#473150` |
+| Primary light (shadow/bg) | `#B3EEE6` |
+| Label / body | `#525252` |
+| Border | `#E6E6E6` |
+| Background | `#FFFFFF` |
+
+**Button Primary:** `bg-[#00C6B2] text-[#473150] font-semibold rounded-full hover:opacity-90`
+
+**Button Outline:** `bg-white border border-[#E6E6E6] text-[#525252] font-normal rounded-full hover:bg-gray-50`
+
+---
+
 ## Carrinho (CartState)
 
 ### Layout
 
 ```
 ┌─────────────────────────────┐
-│ [badge: KCV-1235] [Change]  │
+│ [badge: KCV-1235] [Change]  │  ← border #E6E6E6, texto #525252, change em #00C6B2
 ├─────────────────────────────┤
-│ ☐ Filtro de óleo — €12,50  │
+│ ☐ Filtro de óleo — €12,50  │  ← checkbox accent #00C6B2, nome #525252
 │   Part number: 06J115403 ✏️ │
 │   moco.nl  · 2d        [✕] │
 │                             │
-│ ☑ Vela NGK — €8,00  ✓ Sent │
+│ ☑ Vela NGK — €8,00  ✓ Sent │  ← "Sent" em #00C6B2
 │   Part number: 4629         │
 │   autodoc.com  · 1d         │
 │─────────────────────────────│
-│  [+ Add part manually]      │
+│  [+ Add part manually]      │  ← texto #00C6B2
 ├─────────────────────────────┤
-│  [📷 Scan page] [✂️ Crop]   │
-│  [🗑 Clear unsent]          │
-│  [Finish search]            │
+│  [Crop]      [Scan page]    │  ← Crop=primary, Scan=outline
+│  [Clear unsent]             │  ← outline, full width
+│  [Finish search]            │  ← primary, full width
 └─────────────────────────────┘
 ```
 
@@ -311,21 +341,24 @@ credentials: 'include'
 {
   "part_name": string,
   "oem_number": string,
-  "net_price": number,           // mesmo valor que gross_price (extensão não tem gross)
+  "net_price": number,              // mesmo valor que gross_price (extensão não tem gross)
   "gross_price": number,
-  "delivery_time": string,       // deliveryDays convertido para string, ex: "3"
-  "stock_available": boolean,    // stock > 0
+  "delivery_time": string,          // deliveryDays convertido para string, ex: "3"
+  "stock_available": boolean,       // stock > 0
   "supplier": string,
   "source_url": string,
   "work_mode": "vehicle" | "order",
+  "autoflex_integration": "yes" | "no",  // "yes" se autoflex_connected no login
   "confidence": 90,
-  "vehicle_id": string,          // se workMode = 'vehicle'
-  "vehicle_plate": string,       // se workMode = 'vehicle'
-  "order_id": string             // se workMode = 'order'
+  "vehicle_id": string,             // se workMode = 'vehicle'
+  "vehicle_plate": string,          // se workMode = 'vehicle'
+  "order_id": string                // se workMode = 'order'
 }
 ```
 
 Retorna: `{ status: "success", response: { id: "bubble_part_id" } }`
+
+**Nota:** `bubblePartId` lido em `data.response.id` (fallback: `data.id` → `data.bubble_part_id`). Necessário para o `remove_part`.
 
 Peças enviadas **uma por uma** — facilita retry individual.
 
@@ -340,8 +373,9 @@ credentials: 'include'
 ### Adição Manual
 
 Botão `[+ Add part manually]` abre formulário inline:
-- Campos: Part name + Part number
+- Campos: Part name (required) + Part number
 - Cria `CartItem` com `status: 'pending'`, `sourceUrl: ''`
+- `setShowManualForm(false)` é chamado **antes** do `await onUpdateCart` para evitar stale ref no `e.currentTarget`
 
 ### Botão [✕] por Item
 
@@ -403,6 +437,9 @@ Remove peças `pending` ou `error`. Pede confirmação: *"Remove X unsent parts?
 | `ai_extract` falha | Erro no scan com botão "Retry" |
 | URL muda durante `scanning` | Banner aguarda — não interrompe o scan |
 | Sidebar fechado com peças `pending` | Carrinho persiste no storage |
+| Abertura com veículo/ordem já selecionado | Vai direto para `cart` com contexto e carrinho do storage |
+| Abertura sem veículo/ordem | Vai para `idle` → seleção normal |
+| Abertura no dia seguinte | Cart é limpo automaticamente (cartDate != hoje) |
 | Abertura da extensão | Sempre inicia `checking` — verifica sessão via Bubble (timeout 3s) |
 | Sessão expirada | `checking` timeout → vai para `login` |
 

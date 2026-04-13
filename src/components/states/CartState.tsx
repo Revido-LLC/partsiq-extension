@@ -9,6 +9,7 @@ interface Props {
   vehicle: Vehicle | null;
   order: Order | null;
   workMode: WorkMode;
+  autoflex: boolean;
   pendingUrl: string | null;
   onScan: () => void;
   onCrop: () => void;
@@ -18,7 +19,7 @@ interface Props {
 }
 
 export default function CartState({
-  lang, cart, vehicle, order, workMode,
+  lang, cart, vehicle, order, workMode, autoflex,
   pendingUrl, onScan, onCrop, onUpdateCart, onFinish, onDismissBanner,
 }: Props) {
   const t = useT(lang);
@@ -69,6 +70,7 @@ export default function CartState({
           supplier: item.supplier,
           source_url: item.sourceUrl,
           work_mode: workMode,
+          autoflex_integration: autoflex ? 'yes' : 'no',
           confidence: 90,
         };
         if (workMode === 'vehicle' && vehicle) {
@@ -88,7 +90,7 @@ export default function CartState({
         await updateItem(item.id, {
           status: 'sent',
           checked: true,
-          bubblePartId: data?.id ?? data?.bubble_part_id,
+          bubblePartId: data?.response?.id ?? data?.id ?? data?.bubble_part_id,
           errorMsg: undefined,
         });
       } catch (err) {
@@ -127,9 +129,8 @@ export default function CartState({
       status: 'pending',
       checked: false,
     };
-    await onUpdateCart([...cart, newItem]);
-    e.currentTarget.reset();
     setShowManualForm(false);
+    await onUpdateCart([...cart, newItem]);
   };
 
   const handleClearUnsent = async () => {
@@ -144,13 +145,13 @@ export default function CartState({
     <div className="flex flex-col h-full">
       {/* URL change banner */}
       {pendingUrl && (
-        <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border-b border-blue-100 text-xs">
-          <span className="text-blue-700">{t.pageChanged}</span>
+        <div className="flex items-center justify-between px-3 py-2 bg-[#F0FDFB] border-b border-[#B3EEE6] text-xs">
+          <span className="text-[#473150] font-medium">{t.pageChanged}</span>
           <div className="flex gap-2 ml-2">
-            <button onClick={onScan} className="px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700">
+            <button onClick={onScan} className="px-3 py-1 bg-[#00C6B2] text-[#473150] font-semibold rounded-full hover:opacity-90 transition-opacity">
               {t.scan}
             </button>
-            <button onClick={onDismissBanner} className="px-2 py-0.5 border border-gray-300 rounded hover:bg-gray-50">
+            <button onClick={onDismissBanner} className="px-2 py-1 border border-[#E6E6E6] text-[#525252] rounded-full hover:bg-gray-50 transition-colors">
               ✕
             </button>
           </div>
@@ -165,28 +166,28 @@ export default function CartState({
           const isEditing = editingId === item.id;
 
           return (
-            <div key={item.id} className="border-b border-gray-100 px-3 py-2">
+            <div key={item.id} className="border-b border-[#E6E6E6] px-3 py-2.5">
               <div className="flex items-start gap-2">
                 <input
                   type="checkbox"
                   checked={item.checked}
                   disabled={disabled}
                   onChange={() => handleCheck(item)}
-                  className="mt-0.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="mt-0.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed accent-[#00C6B2]"
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-sm font-medium text-gray-800 truncate">{item.name}</span>
+                    <span className="text-sm font-medium text-[#525252] truncate">{item.name}</span>
                     {item.status === 'sending' && (
-                      <span className="text-xs text-gray-400 shrink-0">{t.sending}</span>
+                      <span className="text-xs text-[#525252] opacity-50 shrink-0">{t.sending}</span>
                     )}
                     {item.status === 'sent' && (
-                      <span className="text-xs text-green-600 shrink-0">{t.sent}</span>
+                      <span className="text-xs text-[#00C6B2] font-medium shrink-0">{t.sent}</span>
                     )}
                     {!isSent && (
                       <button
                         onClick={() => removeItem(item.id)}
-                        className="text-gray-400 hover:text-red-500 shrink-0 text-xs"
+                        className="text-[#E6E6E6] hover:text-red-400 shrink-0 text-xs transition-colors"
                         title="Remove"
                       >
                         ✕
@@ -196,7 +197,7 @@ export default function CartState({
 
                   {/* OEM */}
                   <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-xs text-gray-500">{t.partNumber}:</span>
+                    <span className="text-xs text-[#525252] opacity-60">{t.partNumber}:</span>
                     {isEditing ? (
                       <input
                         autoFocus
@@ -204,17 +205,17 @@ export default function CartState({
                         onChange={e => setEditValue(e.target.value)}
                         onBlur={() => commitOemEdit(item.id)}
                         onKeyDown={e => { if (e.key === 'Enter') commitOemEdit(item.id); }}
-                        className="text-xs border-b border-blue-400 outline-none flex-1 min-w-0"
+                        className="text-xs border-b border-[#00C6B2] outline-none flex-1 min-w-0"
                       />
                     ) : (
-                      <span className="text-xs text-gray-700 flex-1 truncate">
+                      <span className="text-xs text-[#525252] flex-1 truncate">
                         {item.oem || <span className="text-red-400 italic">missing</span>}
                       </span>
                     )}
                     {!isSent && !isEditing && (
                       <button
                         onClick={() => handleOemEdit(item)}
-                        className="text-gray-400 hover:text-blue-500 text-xs"
+                        className="text-[#E6E6E6] hover:text-[#00C6B2] text-xs transition-colors"
                         title="Edit part number"
                       >
                         ✏️
@@ -223,7 +224,7 @@ export default function CartState({
                   </div>
 
                   {/* Meta */}
-                  <div className="flex gap-2 mt-0.5 text-xs text-gray-400">
+                  <div className="flex gap-2 mt-0.5 text-xs text-[#525252] opacity-50">
                     {item.price != null && <span>€{item.price}</span>}
                     {item.deliveryDays != null && <span>{item.deliveryDays}d</span>}
                     {item.supplier && <span className="truncate">{item.supplier}</span>}
@@ -239,31 +240,31 @@ export default function CartState({
         })}
 
         {/* Manual add */}
-        <div className="px-3 py-2 border-b border-gray-100">
+        <div className="px-3 py-2 border-b border-[#E6E6E6]">
           {showManualForm ? (
             <form onSubmit={handleAddManual} className="flex flex-col gap-1.5">
               <input
                 name="name"
                 placeholder={t.partName}
-                className="border border-gray-300 rounded px-2 py-1 text-xs w-full"
+                className="border border-[#E6E6E6] rounded-full px-3 py-1.5 text-xs w-full text-[#525252] outline-none focus:border-[#00C6B2] transition-colors"
                 required
               />
               <input
                 name="oem"
                 placeholder={t.partNumberLabel}
-                className="border border-gray-300 rounded px-2 py-1 text-xs w-full"
+                className="border border-[#E6E6E6] rounded-full px-3 py-1.5 text-xs w-full text-[#525252] outline-none focus:border-[#00C6B2] transition-colors"
               />
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowManualForm(false)}
-                  className="flex-1 px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-50"
+                  className="flex-1 px-3 py-1.5 bg-white border border-[#E6E6E6] text-[#525252] text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
                 >
                   {t.cancel}
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                  className="flex-1 px-3 py-1.5 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
                 >
                   {t.addPart}
                 </button>
@@ -272,7 +273,7 @@ export default function CartState({
           ) : (
             <button
               onClick={() => setShowManualForm(true)}
-              className="text-xs text-blue-600 hover:underline"
+              className="text-xs text-[#00C6B2] font-medium hover:underline"
             >
               {t.addManually}
             </button>
@@ -281,30 +282,30 @@ export default function CartState({
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-200 px-3 py-2 flex flex-col gap-1.5 shrink-0">
+      <div className="border-t border-[#E6E6E6] px-3 py-2.5 flex flex-col gap-2 shrink-0">
         <div className="flex gap-2">
           <button
-            onClick={onScan}
-            className="flex-1 px-2 py-1.5 border border-gray-300 text-xs rounded hover:bg-gray-50"
+            onClick={onCrop}
+            className="flex-1 px-3 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
           >
-            📷 {t.scan}
+            {t.crop}
           </button>
           <button
-            onClick={onCrop}
-            className="flex-1 px-2 py-1.5 border border-gray-300 text-xs rounded hover:bg-gray-50"
+            onClick={onScan}
+            className="flex-1 px-3 py-2 bg-white border border-[#E6E6E6] text-black text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
           >
-            ✂️ {t.crop}
+            {t.scan}
           </button>
         </div>
         <button
           onClick={handleClearUnsent}
-          className="w-full px-2 py-1.5 border border-gray-300 text-xs rounded hover:bg-gray-50 text-gray-600"
+          className="w-full px-3 py-2 bg-white border border-[#E6E6E6] text-[#525252] text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
         >
-          🗑 {t.clearUnsent}
+          {t.clearUnsent}
         </button>
         <button
           onClick={onFinish}
-          className="w-full px-2 py-1.5 bg-gray-800 text-white text-xs rounded hover:bg-gray-900"
+          className="w-full px-3 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
         >
           {t.finishSearch}
         </button>

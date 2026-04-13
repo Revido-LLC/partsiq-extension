@@ -25,13 +25,13 @@ export default function VehiclePanel({ vehicle, expanded, lang, onExpand }: Prop
   }
 
   return (
-    <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200 shrink-0">
-      <span className="font-medium text-sm text-gray-800">
+    <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-[#E6E6E6] shrink-0">
+      <span className="font-medium text-sm text-[#525252]">
         {vehicle?.plate ?? '—'}
       </span>
       <button
         onClick={onExpand}
-        className="text-xs text-blue-600 hover:underline ml-2"
+        className="text-xs text-[#00C6B2] font-medium hover:underline ml-2"
       >
         {t.changeVehicle}
       </button>

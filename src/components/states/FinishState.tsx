@@ -11,12 +11,12 @@ export default function FinishState({ lang, onNewQuote }: Props) {
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4 px-4 text-center">
-      <div className="text-3xl">✓</div>
-      <p className="text-sm font-medium text-gray-800">{t.searchFinished}</p>
-      <p className="text-xs text-gray-500">{t.checkStatus}</p>
+      <div className="text-3xl text-[#00C6B2]">✓</div>
+      <p className="text-sm font-medium text-[#525252]">{t.searchFinished}</p>
+      <p className="text-xs text-[#525252] opacity-60">{t.checkStatus}</p>
       <button
         onClick={onNewQuote}
-        className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+        className="px-6 py-2 bg-[#00C6B2] text-[#473150] text-sm font-semibold rounded-full hover:opacity-90 transition-opacity"
       >
         {t.newQuote}
       </button>
