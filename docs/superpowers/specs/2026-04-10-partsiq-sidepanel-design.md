@@ -2,7 +2,7 @@
 
 > **Status:** Implemented & Tested
 > **Date:** 2026-04-10
-> **Updated:** 2026-04-14
+> **Updated:** 2026-04-14 (2)
 > **Approach:** Clean rewrite — sidepanel UI from scratch, reusing background.ts / storage.ts / ai.ts utilities
 
 ---
@@ -420,9 +420,9 @@ Remove peças `pending` ou `error`. Pede confirmação: *"Remove X unsent parts?
 ┌─────────────────────────────┐
 │   ✓ Search finished.        │
 │                             │
-│   Check part status in      │
-│   Parts iQ.                 │
-│                             │
+│   [Check part status in     │  ← link #00C6B2, abre nova aba
+│    Parts iQ.]               │    vehicle → /dash/parts
+│                             │    order   → /dash/autoflex
 │   [New quote]               │
 └─────────────────────────────┘
 ```
@@ -494,6 +494,21 @@ Alterar **somente** `src/lib/constants.ts`:
 ---
 
 ## Changelog
+
+### 2026-04-14 (2)
+
+**FinishState — link para o dashboard**
+- Texto "Check part status in Parts iQ." transformado em hyperlink (`<a target="_blank">`)
+- `workMode = 'vehicle'` → abre `BUBBLE_BASE_URL/dash/parts`
+- `workMode = 'order'` → abre `BUBBLE_BASE_URL/dash/autoflex`
+- `FinishState` recebe nova prop `workMode: WorkMode`
+
+**Startup — eliminar flash da tela de login**
+- `checking` e `login` states agora renderizam o mesmo `<LoginState>` — React não remonta o iframe na transição (sem reload, sem flash)
+- Novo estado `loginOverlay: boolean` controla spinner sobre o iframe de login
+- Novo handler `handleLoginIframeLoad`: quando iframe dispara `onLoad`, inicia timer de 2.5s; se `partsiq:login_success` chegar antes → timer cancelado, vai para `idle`; se 2.5s passarem → overlay removido, formulário visível
+- Timeout de segurança aumentado de 3s para 5s (fallback se `onLoad` nunca disparar)
+- `LoginState` recebe nova prop `onLoad?: () => void`
 
 ### 2026-04-14
 

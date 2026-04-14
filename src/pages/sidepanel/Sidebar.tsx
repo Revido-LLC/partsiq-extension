@@ -335,7 +335,7 @@ export default function Sidebar() {
       loginTimerRef.current = null;
       setLoginOverlay(false);
       setState('login');
-    }, 1500);
+    }, 2500);
   };
 
   const handleBannerScan = async () => {
@@ -363,7 +363,7 @@ export default function Sidebar() {
   }
 
   if (state === 'finish') {
-    return <FinishState lang={lang} onNewQuote={handleNewQuote} />;
+    return <FinishState lang={lang} workMode={workMode} onNewQuote={handleNewQuote} />;
   }
 
   // idle / scanning / cart / fallback — all show the panel header

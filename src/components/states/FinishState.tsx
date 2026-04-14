@@ -1,19 +1,31 @@
-import type { Lang } from '@types/parts';
+import type { Lang, WorkMode } from '@types/parts';
 import { useT } from '@lib/i18n';
+import { CONFIG } from '@lib/constants';
 
 interface Props {
   lang: Lang;
+  workMode: WorkMode;
   onNewQuote: () => void;
 }
 
-export default function FinishState({ lang, onNewQuote }: Props) {
+export default function FinishState({ lang, workMode, onNewQuote }: Props) {
   const t = useT(lang);
+  const dashUrl = workMode === 'order'
+    ? `${CONFIG.BUBBLE_BASE_URL}/dash/autoflex`
+    : `${CONFIG.BUBBLE_BASE_URL}/dash/parts`;
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4 px-4 text-center">
       <div className="text-3xl text-[#00C6B2]">✓</div>
       <p className="text-sm font-medium text-[#525252]">{t.searchFinished}</p>
-      <p className="text-xs text-[#525252] opacity-60">{t.checkStatus}</p>
+      <a
+        href={dashUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="text-xs text-[#00C6B2] hover:underline"
+      >
+        {t.checkStatus}
+      </a>
       <button
         onClick={onNewQuote}
         className="px-6 py-2 bg-[#00C6B2] text-[#473150] text-sm font-semibold rounded-full hover:opacity-90 transition-opacity"
