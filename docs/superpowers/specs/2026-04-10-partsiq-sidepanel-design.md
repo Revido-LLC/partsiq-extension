@@ -2,7 +2,7 @@
 
 > **Status:** Implemented & Tested
 > **Date:** 2026-04-10
-> **Updated:** 2026-04-13
+> **Updated:** 2026-04-14
 > **Approach:** Clean rewrite — sidepanel UI from scratch, reusing background.ts / storage.ts / ai.ts utilities
 
 ---
@@ -88,8 +88,9 @@ checking → login → idle → cart → finish
 
 | Tipo | Payload | Ação |
 |------|---------|------|
-| `partsiq:login_success` | `{ userId, language, autoflex_connected }` | salva auth, define `workMode` + `lang` + `autoflex`. Se já há veículo/ordem no storage → vai para `cart`. Caso contrário → `idle` |
+| `partsiq:login_success` | `{ userId, language, autoflex_connected }` | salva auth, define `workMode` + `lang` + `autoflex`. Se já há veículo/ordem no storage → vai para `cart`. Caso contrário → `idle` (reseta `iframeReady = false`) |
 | `partsiq:login_failed` | — | mostra `loginError = true` |
+| `partsiq:extension_ready` | — | `iframeReady = true` → remove spinner overlay do VehiclePanel/OrderPanel |
 | `partsiq:vehicle_selected` | `{ plate, id }` | salva veículo, recolhe VehiclePanel, vai para `cart` |
 | `partsiq:order_selected` | `{ plate, id }` | salva ordem, recolhe OrderPanel, vai para `cart` |
 
@@ -186,19 +187,22 @@ Ao abrir a extensão, sempre inicia em `checking`:
 
 ### VehiclePanel (`workMode = 'vehicle'`)
 
-- **Expandido**: iframe fullscreen para `/extension` no Bubble — busca veículo pela placa
+- **Expandido**: iframe fullscreen para `/extension` no Bubble (com `px-[10px]` de margem lateral) — busca veículo pela placa
+- Enquanto `iframeReady = false`: spinner overlay branco (`#B3EEE6` / `#00C6B2`) sobre o iframe — evita flash da tela de login do Bubble
+- Spinner some quando Bubble envia `partsiq:extension_ready`
 - Bubble envia `partsiq:vehicle_selected` com `{ plate, id }`
 - Painel recolhe para badge compacta: `"KCV-1235"` com botão "Change vehicle"
 - Sidebar transita para `cart` (carrinho vazio — usuário inicia scan manualmente)
-- "Change vehicle" → `setState('idle')` + `setVehicleExpanded(true)`, limpa carrinho se havia veículo anterior
+- "Change vehicle" → `setIframeReady(false)` + `setState('idle')` + `setVehicleExpanded(true)`, limpa carrinho se havia veículo anterior
 
 ### OrderPanel (`workMode = 'order'`)
 
-- **Expandido**: iframe fullscreen para `/extension` no Bubble — busca ordem pela placa
+- **Expandido**: iframe fullscreen para `/extension` no Bubble (com `px-[10px]` de margem lateral) — busca ordem pela placa
+- Enquanto `iframeReady = false`: spinner overlay branco sobre o iframe — mesmo comportamento do VehiclePanel
 - Bubble envia `partsiq:order_selected` com `{ plate, id }`
 - Painel recolhe para badge compacta com botão "Change order"
 - Sidebar transita para `cart` (carrinho vazio — usuário inicia scan manualmente)
-- "Change order" → `setState('idle')` + `setVehicleExpanded(true)`, limpa carrinho se havia ordem anterior
+- "Change order" → `setIframeReady(false)` + `setState('idle')` + `setVehicleExpanded(true)`, limpa carrinho se havia ordem anterior
 
 **Importante:** `useBubbleMessages` registrado em `Sidebar.tsx` (sempre ativo). Guarda por `isLoggedInRef.current` para ignorar mensagens antes do login.
 
@@ -417,13 +421,13 @@ Remove peças `pending` ou `error`. Pede confirmação: *"Remove X unsent parts?
 │   ✓ Search finished.        │
 │                             │
 │   Check part status in      │
-│   PartsIQ.                  │
+│   Parts iQ.                 │
 │                             │
 │   [New quote]               │
 └─────────────────────────────┘
 ```
 
-"New quote" → vai para `idle`.
+"New quote" → `setIframeReady(false)` + vai para `idle`.
 
 ---
 
@@ -486,3 +490,22 @@ Alterar **somente** `src/lib/constants.ts`:
 - Extensão chama apenas `ai_extract` endpoint do Bubble
 - Autenticação Bubble via cookies de sessão (`credentials: 'include'`)
 - `<all_urls>` em `host_permissions` necessário para `captureVisibleTab` e `scripting.executeScript`
+
+---
+
+## Changelog
+
+### 2026-04-14
+
+**Iframe loader overlay (sem flash de login)**
+- Novo estado `iframeReady: boolean` em `Sidebar.tsx` (inicia `false`)
+- Novo protocolo Bubble → Extensão: `partsiq:extension_ready` — disparado na página `/extension` via workflow `Page is loaded` + condição `Current User is logged in`
+- `VehiclePanel` e `OrderPanel` (expandidos) exibem spinner overlay branco (`#B3EEE6`/`#00C6B2`) sobre o iframe enquanto `!iframeReady`
+- `iframeReady` resetado para `false` em: `handleNewQuote`, `login_success → idle`, e botões de expand dos panels
+
+**Padronização de margens**
+- `VehiclePanel` e `OrderPanel` (expandidos) passaram a usar `px-[10px]`, igual ao `LoginState`
+
+**Correção de branding**
+- Grafia corrigida para **Parts iQ** em todos os textos visíveis: `manifest.json`, `PopupLayout.tsx`, `BubbleIframe.tsx`, `LoginState.tsx`, `i18n.ts` (EN + NL)
+- Identificadores internos (`partsiq_auth`, `partsiq:login_success`, etc.) mantidos sem alteração
