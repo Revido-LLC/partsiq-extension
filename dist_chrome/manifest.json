@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Parts iQ",
+  "version": "1.0.0",
+  "description": "Capture part data from any supplier website and send it to Parts iQ",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "scripting",
+    "sidePanel",
+    "windows"
+  ],
+  "host_permissions": [
+    "https://app.parts-iq.com/*",
+    "<all_urls>"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "icon-16.png",
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "src/pages/sidepanel/index.html"
+  },
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "js": [
+        "assets/index.ts-ByNV9l4I.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "resources": [
+        "assets/index.ts-ByNV9l4I.js"
+      ],
+      "use_dynamic_url": false
+    }
+  ]
+}
