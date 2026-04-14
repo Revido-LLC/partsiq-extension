@@ -14,7 +14,7 @@ export default function LoginState(_props: Props) {
       <iframe
         src={buildBubbleUrl('login')}
         className="absolute inset-x-[10px] inset-y-0 w-[calc(100%-20px)] h-full border-0"
-        title="PartsIQ Login"
+        title="Parts iQ Login"
       />
     </div>
   );

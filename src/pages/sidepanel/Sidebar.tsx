@@ -35,6 +35,7 @@ export default function Sidebar() {
   const [scanScreenshot, setScanScreenshot] = useState<string | null>(null);
   const [loginError, setLoginError] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
+  const [iframeReady, setIframeReady] = useState(false);
 
   // Refs to avoid stale closures in event listeners
   const isLoggedInRef = useRef(isLoggedIn);
@@ -113,6 +114,11 @@ export default function Sidebar() {
 
   // ── Bubble message listener (always registered, guarded by isLoggedInRef) ──
   useBubbleMessages((msg) => {
+    if (msg.type === 'partsiq:extension_ready') {
+      setIframeReady(true);
+      return;
+    }
+
     if (msg.type === 'partsiq:login_success') {
       const language = (msg.language as Lang) ?? 'en';
       const autoflexConnected = (msg.autoflex_connected as string) === 'yes';
@@ -133,6 +139,7 @@ export default function Sidebar() {
         setState('cart');
         setVehicleExpanded(false);
       } else {
+        setIframeReady(false);
         setState('idle');
         setVehicleExpanded(true);
       }
@@ -295,6 +302,7 @@ export default function Sidebar() {
   };
 
   const handleNewQuote = () => {
+    setIframeReady(false);
     setVehicleExpanded(true);
     setState('idle');
   };
@@ -342,7 +350,8 @@ export default function Sidebar() {
         order={order}
         expanded={vehicleExpanded}
         lang={lang}
-        onExpand={() => { setVehicleExpanded(true); setState('idle'); }}
+        iframeReady={iframeReady}
+        onExpand={() => { setIframeReady(false); setVehicleExpanded(true); setState('idle'); }}
       />
     )
     : (
@@ -350,7 +359,8 @@ export default function Sidebar() {
         vehicle={vehicle}
         expanded={vehicleExpanded}
         lang={lang}
-        onExpand={() => { setVehicleExpanded(true); setState('idle'); }}
+        iframeReady={iframeReady}
+        onExpand={() => { setIframeReady(false); setVehicleExpanded(true); setState('idle'); }}
       />
     );
 

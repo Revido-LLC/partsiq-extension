@@ -6,20 +6,26 @@ interface Props {
   vehicle: Vehicle | null;
   expanded: boolean;
   lang: Lang;
+  iframeReady: boolean;
   onExpand: () => void;
 }
 
-export default function VehiclePanel({ vehicle, expanded, lang, onExpand }: Props) {
+export default function VehiclePanel({ vehicle, expanded, lang, iframeReady, onExpand }: Props) {
   const t = useT(lang);
 
   if (expanded) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="relative flex flex-col h-full px-[10px]">
         <iframe
           src={buildBubbleUrl('extension')}
           className="flex-1 w-full border-0"
           title="Select vehicle"
         />
+        {!iframeReady && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white">
+            <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
+          </div>
+        )}
       </div>
     );
   }

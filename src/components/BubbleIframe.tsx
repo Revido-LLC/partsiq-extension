@@ -21,7 +21,7 @@ const BubbleIframe = ({ src, onMessage, iframeRef, height = '460px' }: Props) =>
       src={src}
       style={{ width: '100%', height, border: 'none' }}
       sandbox="allow-scripts allow-same-origin allow-forms"
-      title="PartsIQ"
+      title="Parts iQ"
     />
   );
 };
