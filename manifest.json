@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "PartsIQ",
+  "name": "Parts iQ",
   "version": "1.0.0",
-  "description": "Capture part data from any supplier website and send it to PartsIQ",
+  "description": "Capture part data from any supplier website and send it to Parts iQ",
   "permissions": [
     "activeTab",
     "tabs",
