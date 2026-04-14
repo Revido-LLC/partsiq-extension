@@ -9,7 +9,7 @@ import {
   getOrder, setOrder,
   getCart, setCart,
 } from '@lib/storage';
-import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
+import { useBubbleMessages } from '@lib/iframe';
 import { captureScreenshot } from '@lib/screenshot';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import type { AiPart } from '@lib/ai';
@@ -36,6 +36,8 @@ export default function Sidebar() {
   const [loginError, setLoginError] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
+  const [loginOverlay, setLoginOverlay] = useState(true);
+  const loginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs to avoid stale closures in event listeners
   const isLoggedInRef = useRef(isLoggedIn);
@@ -74,15 +76,27 @@ export default function Sidebar() {
     })();
   }, []);
 
-  // ── Auth check timeout ─────────────────────────────────────────────────────
+  // ── Auth check timeout (fallback se onLoad nunca disparar) ────────────────
   useEffect(() => {
     if (state !== 'checking') return;
     const timer = setTimeout(async () => {
       await setAuthStatus(false);
+      if (loginTimerRef.current) {
+        clearTimeout(loginTimerRef.current);
+        loginTimerRef.current = null;
+      }
+      setLoginOverlay(false);
       setState('login');
-    }, 3000);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [state]);
+
+  // ── Cleanup loginTimer on unmount ──────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (loginTimerRef.current) clearTimeout(loginTimerRef.current);
+    };
+  }, []);
 
   // ── chrome.runtime message listener ───────────────────────────────────────
   useEffect(() => {
@@ -120,6 +134,10 @@ export default function Sidebar() {
     }
 
     if (msg.type === 'partsiq:login_success') {
+      if (loginTimerRef.current) {
+        clearTimeout(loginTimerRef.current);
+        loginTimerRef.current = null;
+      }
       const language = (msg.language as Lang) ?? 'en';
       const autoflexConnected = (msg.autoflex_connected as string) === 'yes';
       const mode: WorkMode = autoflexConnected ? 'order' : 'vehicle';
@@ -312,30 +330,35 @@ export default function Sidebar() {
     setState('login');
   };
 
+  const handleLoginIframeLoad = () => {
+    loginTimerRef.current = setTimeout(() => {
+      loginTimerRef.current = null;
+      setLoginOverlay(false);
+      setState('login');
+    }, 1500);
+  };
+
   const handleBannerScan = async () => {
     setPendingUrl(null);
     await handleScan();
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  if (state === 'checking') {
+  if (state === 'checking' || state === 'login') {
     return (
       <div className="relative h-full">
-        <iframe src={buildBubbleUrl('login')} className="hidden" title="Auth check" />
-        <div className="flex items-center justify-center h-full">
-          <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
-        </div>
+        <LoginState
+          lang={lang}
+          hasError={loginError}
+          onRetry={handleLoginRetry}
+          onLoad={handleLoginIframeLoad}
+        />
+        {loginOverlay && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+            <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
+          </div>
+        )}
       </div>
-    );
-  }
-
-  if (state === 'login') {
-    return (
-      <LoginState
-        lang={lang}
-        hasError={loginError}
-        onRetry={handleLoginRetry}
-      />
     );
   }
 
