@@ -17,6 +17,7 @@ export interface CartItem {
   errorMsg?: string;
   bubblePartId?: string;
   checked: boolean;
+  autoSend?: boolean;
 }
 
 export interface Vehicle {

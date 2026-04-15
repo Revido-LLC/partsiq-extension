@@ -38,6 +38,16 @@
         "<all_urls>"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "js": [
+        "assets/hide-ybug.ts-CeigAM1j.js"
+      ],
+      "matches": [
+        "https://app.parts-iq.com/*"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
     }
   ],
   "icons": {
@@ -52,6 +62,15 @@
       ],
       "resources": [
         "assets/index.ts-ByNV9l4I.js"
+      ],
+      "use_dynamic_url": false
+    },
+    {
+      "matches": [
+        "https://app.parts-iq.com/*"
+      ],
+      "resources": [
+        "assets/hide-ybug.ts-CeigAM1j.js"
       ],
       "use_dynamic_url": false
     }

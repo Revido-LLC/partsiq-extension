@@ -52,7 +52,7 @@ export default function Sidebar() {
   orderRef.current = order;
 
   // Ref to processScan so the chrome.runtime listener always calls the current version
-  const processScanRef = useRef<(base64: string) => Promise<void>>(async () => {});
+  const processScanRef = useRef<(base64: string, isCrop?: boolean) => Promise<void>>(async () => {});
 
   // ── Init from storage ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -117,7 +117,7 @@ export default function Sidebar() {
           setScanScreenshot(null);
           const raw = msg.imageBase64;
           const base64 = raw.includes(',') ? raw.split(',')[1] : raw;
-          processScanRef.current(base64);
+          processScanRef.current(base64, true);
         }
       }
     };
@@ -227,7 +227,7 @@ export default function Sidebar() {
     }
   };
 
-  const aiPartsToCartItems = (parts: AiPart[], sourceUrl: string): CartItem[] =>
+  const aiPartsToCartItems = (parts: AiPart[], sourceUrl: string, autoSend = false): CartItem[] =>
     parts.map(p => ({
       id: crypto.randomUUID(),
       name: p.name,
@@ -239,7 +239,8 @@ export default function Sidebar() {
       sourceUrl,
       scannedAt: new Date().toISOString(),
       status: 'pending' as const,
-      checked: false,
+      checked: autoSend,
+      autoSend,
     }));
 
   const mergeCart = (existing: CartItem[], incoming: CartItem[], currentUrl: string): CartItem[] => {
@@ -250,7 +251,7 @@ export default function Sidebar() {
     return [...kept, ...incoming];
   };
 
-  const processScan = async (base64: string): Promise<void> => {
+  const processScan = async (base64: string, isCrop = false): Promise<void> => {
     setScanError(null);
     try {
       const parts = await extractPartsFromScreenshot(base64);
@@ -259,7 +260,8 @@ export default function Sidebar() {
         return;
       }
       const url = await getCurrentUrl();
-      const newItems = aiPartsToCartItems(parts, url);
+      const autoSend = isCrop && parts.length <= 2;
+      const newItems = aiPartsToCartItems(parts, url, autoSend);
       const merged = mergeCart(cartRef.current, newItems, url);
       setCartState(merged);
       await setCart(merged);
@@ -403,20 +405,22 @@ export default function Sidebar() {
       )}
 
       {state === 'cart' && (
-        <CartState
-          lang={lang}
-          cart={cart}
-          vehicle={vehicle}
-          order={order}
-          workMode={workMode}
-          autoflex={autoflex}
-          pendingUrl={pendingUrl}
-          onScan={handleBannerScan}
-          onCrop={handleCrop}
-          onUpdateCart={handleUpdateCart}
-          onFinish={handleFinish}
-          onDismissBanner={() => setPendingUrl(null)}
-        />
+        <div className="flex-1 overflow-hidden">
+          <CartState
+            lang={lang}
+            cart={cart}
+            vehicle={vehicle}
+            order={order}
+            workMode={workMode}
+            autoflex={autoflex}
+            pendingUrl={pendingUrl}
+            onScan={handleBannerScan}
+            onCrop={handleCrop}
+            onUpdateCart={handleUpdateCart}
+            onFinish={handleFinish}
+            onDismissBanner={() => setPendingUrl(null)}
+          />
+        </div>
       )}
 
       {state === 'fallback' && (

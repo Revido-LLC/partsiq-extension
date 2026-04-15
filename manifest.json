@@ -34,6 +34,12 @@
       "matches": ["<all_urls>"],
       "js": ["src/content/index.ts"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://app.parts-iq.com/*"],
+      "js": ["src/content/hide-ybug.ts"],
+      "run_at": "document_start",
+      "all_frames": true
     }
   ],
   "icons": {

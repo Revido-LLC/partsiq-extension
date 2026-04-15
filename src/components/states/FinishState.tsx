@@ -22,7 +22,7 @@ export default function FinishState({ lang, workMode, onNewQuote }: Props) {
         href={dashUrl}
         target="_blank"
         rel="noreferrer"
-        className="text-xs text-[#00C6B2] hover:underline"
+        className="px-4 py-2 border border-[#00C6B2] text-[#00C6B2] text-xs font-medium rounded-full hover:bg-[#F0FDFB] transition-colors"
       >
         {t.checkStatus}
       </a>
