@@ -328,6 +328,10 @@ export default function Sidebar() {
   };
 
   const handleNewQuote = () => {
+    if (autoflex) {
+      setWorkModeState('order');
+      void setWorkMode('order');
+    }
     setIframeReady(false);
     setVehicleExpanded(true);
     setState('idle');
