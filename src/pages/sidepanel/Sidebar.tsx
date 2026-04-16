@@ -9,7 +9,7 @@ import {
   getOrder, setOrder,
   getCart, setCart,
 } from '@lib/storage';
-import { useBubbleMessages } from '@lib/iframe';
+import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
 import { captureScreenshot } from '@lib/screenshot';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import type { AiPart } from '@lib/ai';
@@ -377,7 +377,7 @@ export default function Sidebar() {
   }
 
   if (state === 'finish') {
-    return <FinishState lang={lang} workMode={workMode} onNewQuote={handleNewQuote} />;
+    return <FinishState lang={lang} workMode={workMode} order={order} onNewQuote={handleNewQuote} />;
   }
 
   // idle / scanning / cart / fallback — all show the panel header
@@ -409,9 +409,24 @@ export default function Sidebar() {
       />
     );
 
-  // When idle and panel is expanded: full-screen iframe (no other content)
+  // When idle and panel is expanded: full-screen iframe rendered directly
+  // (NOT through panel components, to preserve Bubble's internal navigation state
+  //  when switching between order and vehicle mode)
   if (state === 'idle' && vehicleExpanded) {
-    return <div className="flex flex-col h-screen">{panelHeader}</div>;
+    return (
+      <div className="relative flex flex-col h-screen px-[10px]">
+        <iframe
+          src={buildBubbleUrl('extension')}
+          className="flex-1 w-full border-0"
+          title="Select"
+        />
+        {!iframeReady && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white">
+            <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

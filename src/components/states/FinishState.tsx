@@ -1,18 +1,21 @@
-import type { Lang, WorkMode } from '@types/parts';
+import type { Lang, WorkMode, Order } from '@types/parts';
 import { useT } from '@lib/i18n';
 import { CONFIG } from '@lib/constants';
 
 interface Props {
   lang: Lang;
   workMode: WorkMode;
+  order: Order | null;
   onNewQuote: () => void;
 }
 
-export default function FinishState({ lang, workMode, onNewQuote }: Props) {
+export default function FinishState({ lang, workMode, order, onNewQuote }: Props) {
   const t = useT(lang);
-  const dashUrl = workMode === 'order'
-    ? `${CONFIG.BUBBLE_BASE_URL}/dash/autoflex`
-    : `${CONFIG.BUBBLE_BASE_URL}/dash/parts`;
+  const dashUrl = workMode === 'order' && order
+    ? `${CONFIG.BUBBLE_BASE_URL}/dash/autoflex//sourced-parts?work-order-id=${order.id}`
+    : workMode === 'order'
+      ? `${CONFIG.BUBBLE_BASE_URL}/dash/autoflex`
+      : `${CONFIG.BUBBLE_BASE_URL}/dash/parts`;
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4 px-4 text-center">
