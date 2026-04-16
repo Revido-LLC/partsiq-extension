@@ -37,12 +37,10 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof CartState>>
     vehicle: null,
     order: null,
     workMode: 'vehicle' as const,
-    pendingUrl: null,
     onScan: vi.fn().mockResolvedValue(undefined),
     onCrop: vi.fn().mockResolvedValue(undefined),
     onUpdateCart: vi.fn().mockResolvedValue(undefined),
     onFinish: vi.fn(),
-    onDismissBanner: vi.fn(),
     ...overrides,
   };
 }
@@ -393,40 +391,6 @@ describe('handleCheck — ignores items with status "sending"', () => {
 
     await new Promise(r => setTimeout(r, 50));
     expect(onUpdateCart).not.toHaveBeenCalled();
-  });
-});
-
-// ── URL change banner ─────────────────────────────────────────────────────────
-
-describe('URL change banner', () => {
-  it('renders the banner text when pendingUrl is set', () => {
-    render(<CartState {...defaultProps({ pendingUrl: 'https://foo.com' })} />);
-    expect(screen.getByText('Page changed — scan now?')).toBeInTheDocument();
-  });
-
-  it('does not render the banner when pendingUrl is null', () => {
-    render(<CartState {...defaultProps({ pendingUrl: null })} />);
-    expect(screen.queryByText('Page changed — scan now?')).not.toBeInTheDocument();
-  });
-
-  it('calls onScan when the banner scan button is clicked', () => {
-    const onScan = vi.fn();
-    render(<CartState {...defaultProps({ pendingUrl: 'https://foo.com', onScan })} />);
-
-    // The banner has its own "Scan page" button — it's the first one in the banner
-    const bannerScanBtn = screen.getAllByRole('button', { name: 'Scan page' })[0];
-    fireEvent.click(bannerScanBtn);
-
-    expect(onScan).toHaveBeenCalledOnce();
-  });
-
-  it('calls onDismissBanner when the dismiss button (✕) is clicked', () => {
-    const onDismissBanner = vi.fn();
-    render(<CartState {...defaultProps({ pendingUrl: 'https://foo.com', onDismissBanner })} />);
-
-    fireEvent.click(screen.getByRole('button', { name: '✕' }));
-
-    expect(onDismissBanner).toHaveBeenCalledOnce();
   });
 });
 
