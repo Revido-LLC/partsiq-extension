@@ -220,6 +220,14 @@ export default function Sidebar() {
       setState('idle');
       return;
     }
+
+    if (msg.type === 'partsiq:switch_to_order') {
+      setWorkModeState('order');
+      void setWorkMode('order');
+      setVehicleExpanded(true);
+      setState('idle');
+      return;
+    }
   });
 
   // ── Scan helpers ───────────────────────────────────────────────────────────
