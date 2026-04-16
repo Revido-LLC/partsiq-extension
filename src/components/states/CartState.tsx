@@ -56,7 +56,7 @@ export default function CartState({
         supplier: item.supplier,
         source_url: item.sourceUrl,
         work_mode: workMode,
-        autoflex_integration: autoflex ? 'yes' : 'no',
+        autoflex_integration: workMode === 'order' ? 'yes' : 'no',
         confidence: 90,
       };
       if (workMode === 'vehicle' && vehicle) {
