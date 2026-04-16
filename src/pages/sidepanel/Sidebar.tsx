@@ -13,6 +13,7 @@ import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
 import { captureScreenshot } from '@lib/screenshot';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import type { AiPart } from '@lib/ai';
+import BubbleIframe from '@components/BubbleIframe';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
 import CartState from '@components/states/CartState';
@@ -33,7 +34,6 @@ export default function Sidebar() {
   const [vehicleExpanded, setVehicleExpanded] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanScreenshot, setScanScreenshot] = useState<string | null>(null);
-  const [loginError, setLoginError] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [finishOrder, setFinishOrder] = useState<Order | null>(null);
@@ -146,7 +146,6 @@ export default function Sidebar() {
       setLangState(language);
       setWorkModeState(mode);
       setIsLoggedIn(true);
-      setLoginError(false);
       void setAuthStatus(true);
       void setLang(language);
       void setWorkMode(mode);
@@ -166,7 +165,6 @@ export default function Sidebar() {
     }
 
     if (msg.type === 'partsiq:login_failed') {
-      setLoginError(true);
       return;
     }
 
@@ -188,12 +186,6 @@ export default function Sidebar() {
 
       setVehicleState(v);
       void setVehicle(v);
-      setVehicleExpanded(false);
-
-      if (hadVehicle) {
-        void setCart([]);
-        setCartState([]);
-      }
       setState('cart');
       setVehicleExpanded(false);
     }
@@ -342,11 +334,6 @@ export default function Sidebar() {
     setState('idle');
   };
 
-  const handleLoginRetry = () => {
-    setLoginError(false);
-    setState('login');
-  };
-
   const handleLoginIframeLoad = () => {
     loginTimerRef.current = setTimeout(() => {
       loginTimerRef.current = null;
@@ -364,12 +351,7 @@ export default function Sidebar() {
   if (state === 'checking' || state === 'login') {
     return (
       <div className="relative h-full">
-        <LoginState
-          lang={lang}
-          hasError={loginError}
-          onRetry={handleLoginRetry}
-          onLoad={handleLoginIframeLoad}
-        />
+        <LoginState onLoad={handleLoginIframeLoad} />
         {loginOverlay && (
           <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
             <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
@@ -388,18 +370,14 @@ export default function Sidebar() {
     ? (
       <OrderPanel
         order={order}
-        expanded={vehicleExpanded}
         lang={lang}
-        iframeReady={iframeReady}
         onExpand={() => { setIframeReady(false); setVehicleExpanded(true); setState('idle'); }}
       />
     )
     : (
       <VehiclePanel
         vehicle={vehicle}
-        expanded={vehicleExpanded}
         lang={lang}
-        iframeReady={iframeReady}
         onExpand={() => {
           if (autoflex) {
             setWorkModeState('order');
@@ -417,11 +395,11 @@ export default function Sidebar() {
   //  when switching between order and vehicle mode)
   if (state === 'idle' && vehicleExpanded) {
     return (
-      <div className="relative flex flex-col h-screen px-[10px]">
-        <iframe
+      <div className="relative flex flex-col h-screen">
+        <BubbleIframe
           src={buildBubbleUrl('extension')}
-          className="flex-1 w-full border-0"
           title="Select"
+          className="flex-1 w-full"
         />
         {!iframeReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-white">
