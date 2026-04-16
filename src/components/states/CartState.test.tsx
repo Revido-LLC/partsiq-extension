@@ -437,10 +437,10 @@ describe('Crop button', () => {
   });
 });
 
-// ── Footer scan button ────────────────────────────────────────────────────────
+// ── Scan button ───────────────────────────────────────────────────────────────
 
-describe('Footer scan button', () => {
-  it('calls onScan when the footer scan button is clicked', () => {
+describe('Scan button', () => {
+  it('calls onScan when the scan button is clicked', () => {
     const onScan = vi.fn();
     render(<CartState {...defaultProps({ onScan })} />);
 
