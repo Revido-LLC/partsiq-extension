@@ -71,7 +71,13 @@ export default function BubbleIframe({ src, title, className = '', onLoad }: Pro
 
   return (
     <div ref={wrapperRef} className={`relative flex flex-col ${className}`} style={wrapperStyle}>
-      <iframe src={src} title={title} onLoad={onLoad} style={iframeStyle} />
+      <iframe
+        src={src}
+        title={title}
+        onLoad={onLoad}
+        style={iframeStyle}
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+      />
     </div>
   );
 }

@@ -134,12 +134,13 @@ export default function CartState({
       // Unsend
       await updateItem(item.id, { status: 'sending' });
       try {
-        await fetch(CONFIG.BUBBLE_API.REMOVE_PART, {
+        const resp = await fetch(CONFIG.BUBBLE_API.REMOVE_PART, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bubble_part_id: item.bubblePartId }),
         });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         await updateItem(item.id, { status: 'pending', checked: false, bubblePartId: undefined });
       } catch (err) {
         await updateItem(item.id, { status: 'sent', errorMsg: String(err) });

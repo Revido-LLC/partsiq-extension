@@ -58,22 +58,26 @@ export default function Sidebar() {
   // ── Init from storage ──────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
-      const [storedLang, storedWorkMode, storedVehicle, storedOrder, storedCart, storedAutoflex] =
-        await Promise.all([
-          getLang(),
-          getWorkMode(),
-          getVehicle(),
-          getOrder(),
-          getCart(),
-          getAutoflex(),
-        ]);
+      try {
+        const [storedLang, storedWorkMode, storedVehicle, storedOrder, storedCart, storedAutoflex] =
+          await Promise.all([
+            getLang(),
+            getWorkMode(),
+            getVehicle(),
+            getOrder(),
+            getCart(),
+            getAutoflex(),
+          ]);
 
-      setLangState(storedLang);
-      setWorkModeState(storedWorkMode);
-      setVehicleState(storedVehicle);
-      setOrderState(storedOrder);
-      setCartState(storedCart);
-      setAutoflexState(storedAutoflex);
+        setLangState(storedLang);
+        setWorkModeState(storedWorkMode);
+        setVehicleState(storedVehicle);
+        setOrderState(storedOrder);
+        setCartState(storedCart);
+        setAutoflexState(storedAutoflex);
+      } catch {
+        setState('login');
+      }
     })();
   }, []);
 
@@ -314,7 +318,7 @@ export default function Sidebar() {
   };
 
   const handleFinish = async () => {
-    setFinishOrder(order);
+    setFinishOrder(orderRef.current);
     setCartState([]);
     setVehicleState(null);
     setOrderState(null);
