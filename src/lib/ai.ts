@@ -28,6 +28,7 @@ export async function extractPartsFromScreenshot(
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ image_base64: screenshotBase64, prompt: EXTRACTION_PROMPT }),
+    signal: AbortSignal.timeout(30_000),
   });
 
   if (!response.ok) {
@@ -35,9 +36,7 @@ export async function extractPartsFromScreenshot(
   }
 
   const data = await response.json();
-  console.log('[partsiq] full response:', JSON.stringify(data));
   let raw = data?.response?.parts ?? data?.parts;
-  console.log('[partsiq] ai_extract raw:', raw);
 
   // Bubble returns raw OpenRouter body as string — extract content from choices[0].message.content
   if (typeof raw === 'string') {
@@ -50,8 +49,6 @@ export async function extractPartsFromScreenshot(
       // raw is already a plain string (e.g. direct content), keep as is
     }
   }
-
-  console.log('[partsiq] ai content:', raw);
 
   // Strip markdown code fences if present (```json ... ```)
   if (typeof raw === 'string') {
