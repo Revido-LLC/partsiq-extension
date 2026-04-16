@@ -391,7 +391,15 @@ export default function Sidebar() {
         expanded={vehicleExpanded}
         lang={lang}
         iframeReady={iframeReady}
-        onExpand={() => { setIframeReady(false); setVehicleExpanded(true); setState('idle'); }}
+        onExpand={() => {
+          if (autoflex) {
+            setWorkModeState('order');
+            void setWorkMode('order');
+          }
+          setIframeReady(false);
+          setVehicleExpanded(true);
+          setState('idle');
+        }}
       />
     );
 
