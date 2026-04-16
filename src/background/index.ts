@@ -109,7 +109,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
               await chrome.scripting.executeScript({ target: { tabId }, files });
             }
           }
-          await chrome.tabs.sendMessage(tabId, { type: 'start_crop' });
+          await chrome.tabs.sendMessage(tabId, { type: 'start_crop', lang: msg.lang ?? 'en' });
           sendResponse({ ok: true });
         } catch (err) {
           sendResponse({ error: String(err) });
