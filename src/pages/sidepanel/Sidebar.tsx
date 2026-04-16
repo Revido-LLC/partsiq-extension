@@ -215,6 +215,12 @@ export default function Sidebar() {
       setState('cart');
       setVehicleExpanded(false);
     }
+
+    if (msg.type === 'partsiq:switch_to_vehicle') {
+      setWorkModeState('vehicle');
+      void setWorkMode('vehicle');
+      return;
+    }
   });
 
   // ── Scan helpers ───────────────────────────────────────────────────────────
