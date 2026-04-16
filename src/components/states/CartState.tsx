@@ -9,17 +9,15 @@ interface Props {
   vehicle: Vehicle | null;
   order: Order | null;
   workMode: WorkMode;
-  pendingUrl: string | null;
   onScan: () => void;
   onCrop: () => void;
   onUpdateCart: (items: CartItem[]) => Promise<void>;
   onFinish: () => void;
-  onDismissBanner: () => void;
 }
 
 export default function CartState({
   lang, cart, vehicle, order, workMode,
-  pendingUrl, onScan, onCrop, onUpdateCart, onFinish, onDismissBanner,
+  onScan, onCrop, onUpdateCart, onFinish,
 }: Props) {
   const t = useT(lang);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -210,21 +208,6 @@ export default function CartState({
 
   return (
     <div className="relative flex flex-col h-full">
-      {/* URL change banner */}
-      {pendingUrl && (
-        <div className="flex items-center justify-between px-3 py-2 bg-[#F0FDFB] border-b border-[#B3EEE6] text-xs">
-          <span className="text-[#473150] font-medium">{t.pageChanged}</span>
-          <div className="flex gap-2 ml-2">
-            <button onClick={onScan} className="px-3 py-1 bg-[#00C6B2] text-[#473150] font-semibold rounded-full hover:opacity-90 transition-opacity">
-              {t.scan}
-            </button>
-            <button onClick={onDismissBanner} className="px-2 py-1 border border-[#E6E6E6] text-[#525252] rounded-full hover:bg-gray-50 transition-colors">
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Cart items */}
       <div className="flex-1 overflow-y-auto scrollbar-hidden">
         {cart.map(item => {

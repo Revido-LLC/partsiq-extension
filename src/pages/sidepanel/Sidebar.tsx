@@ -34,8 +34,7 @@ export default function Sidebar() {
   const [vehicleExpanded, setVehicleExpanded] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanScreenshot, setScanScreenshot] = useState<string | null>(null);
-  const [pendingUrl, setPendingUrl] = useState<string | null>(null);
-  const [iframeReady, setIframeReady] = useState(false);
+const [iframeReady, setIframeReady] = useState(false);
   const [finishOrder, setFinishOrder] = useState<Order | null>(null);
   const [loginOverlay, setLoginOverlay] = useState(true);
   const loginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -106,13 +105,6 @@ export default function Sidebar() {
   // ── chrome.runtime message listener ───────────────────────────────────────
   useEffect(() => {
     const handler = (msg: { type: string; url?: string; imageBase64?: string; error?: string }) => {
-      if (msg.type === 'page_url_changed' && msg.url) {
-        const s = stateRef.current;
-        if (s === 'cart' || s === 'idle') {
-          setPendingUrl(msg.url);
-        }
-      }
-
       if (msg.type === 'crop_ready') {
         if (msg.error) {
           setScanError(msg.error);
@@ -306,7 +298,6 @@ export default function Sidebar() {
     setCartState([]);
     setVehicleState(null);
     setOrderState(null);
-    setPendingUrl(null);
     await Promise.all([setCart([]), setVehicle(null), setOrder(null)]);
     setState('finish');
   };
@@ -328,11 +319,6 @@ export default function Sidebar() {
       setLoginOverlay(false);
       setState('login');
     }, 2500);
-  };
-
-  const handleBannerScan = async () => {
-    setPendingUrl(null);
-    await handleScan();
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -416,12 +402,10 @@ export default function Sidebar() {
             vehicle={vehicle}
             order={order}
             workMode={workMode}
-            pendingUrl={pendingUrl}
-            onScan={handleBannerScan}
+            onScan={handleScan}
             onCrop={handleCrop}
             onUpdateCart={handleUpdateCart}
             onFinish={handleFinish}
-            onDismissBanner={() => setPendingUrl(null)}
           />
         </div>
       )}
