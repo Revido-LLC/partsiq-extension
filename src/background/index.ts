@@ -1,4 +1,5 @@
 import { CONFIG } from '@lib/constants';
+import { dataUrlToBlob } from '@lib/image-utils';
 
 // Open sidebar when extension icon is clicked
 chrome.sidePanel
@@ -6,15 +7,6 @@ chrome.sidePanel
   .catch(() => {/* ignore if API not available */});
 
 // ── Screenshot helper ────────────────────────────────────────────────────────
-
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [header, b64] = dataUrl.split(',');
-  const mime = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg';
-  const bytes = atob(b64);
-  const arr = new Uint8Array(bytes.length);
-  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-  return new Blob([arr], { type: mime });
-}
 
 async function captureFullPage(tab: chrome.tabs.Tab): Promise<string> {
   if (!tab.id) throw new Error('No tab id');

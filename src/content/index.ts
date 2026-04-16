@@ -29,7 +29,7 @@ const notifyUrlChange = () => {
   debounceTimer = setTimeout(() => {
     if (window.location.href !== currentUrl) {
       currentUrl = window.location.href;
-      chrome.runtime.sendMessage({ type: 'url_changed', url: currentUrl });
+      chrome.runtime.sendMessage({ type: 'url_changed', url: currentUrl }).catch(() => {});
     }
   }, 100);
 };
@@ -41,7 +41,7 @@ observer.observe(document.body, { childList: true, subtree: true });
   const original = history[method];
   history[method] = function (...args: Parameters<typeof original>) {
     const result = original.apply(this, args);
-    chrome.runtime.sendMessage({ type: 'url_changed', url: window.location.href });
+    chrome.runtime.sendMessage({ type: 'url_changed', url: window.location.href }).catch(() => {});
     return result;
   };
 });
@@ -181,6 +181,7 @@ function injectCropOverlay() {
   cropKeyHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       removeCropOverlay();
+      chrome.runtime.sendMessage({ type: 'crop_ready', error: 'Cancelled by user' }).catch(() => {});
     }
   };
   document.addEventListener('keydown', cropKeyHandler);
