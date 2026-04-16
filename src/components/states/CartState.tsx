@@ -393,19 +393,30 @@ export default function CartState({
       )}
 
       {/* Footer */}
-      <div className="border-t border-[#E6E6E6] px-3 py-2.5 flex flex-col gap-2 shrink-0">
-        <button
-          onClick={handleClearUnsent}
-          className="w-full px-3 py-2 bg-white border border-[#E6E6E6] text-[#525252] text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
-        >
-          {t.clearUnsent}
-        </button>
-        <button
-          onClick={onFinish}
-          className="w-full px-3 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
-        >
-          {t.finishSearch}
-        </button>
+      <div className="border-t border-[#E6E6E6] px-3 py-2.5 shrink-0">
+        <div className="flex gap-2">
+          <button
+            onClick={handleClearUnsent}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-[#E6E6E6] text-[#525252] text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14H6L5 6"/>
+              <path d="M10 11v6M14 11v6"/>
+              <path d="M9 6V4h6v2"/>
+            </svg>
+            {t.clearUnsent}
+          </button>
+          <button
+            onClick={onFinish}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {t.finishSearch}
+          </button>
+        </div>
       </div>
     </div>
   );
