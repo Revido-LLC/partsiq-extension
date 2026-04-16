@@ -30,12 +30,14 @@ src/
     states/               # LoginState, CartState, ScanningState, FallbackState, FinishState
     cart/                 # CartFooter
   lib/
-    constants.ts    # Bubble URLs, API endpoints, storage keys
+    constants.ts    # Bubble URLs, API endpoints, storage keys (BUBBLE_VERSION extracted)
     iframe.ts       # buildBubbleUrl(), useBubbleMessages() hook
-    ai.ts           # AI part extraction from screenshots
+    ai.ts           # AI part extraction from screenshots (30s timeout)
     screenshot.ts   # Tab screenshot capture
     storage.ts      # chrome.storage.local wrappers
     i18n.ts         # Translation hook
+    cart-utils.ts   # Pure functions: mergeCart(), aiPartsToCartItems()
+    image-utils.ts  # Shared dataUrlToBlob() (used by screenshot.ts + background)
   types/parts.ts    # Shared types (Lang, WorkMode, SidebarState, CartItem, Vehicle, Order)
 ```
 
@@ -49,7 +51,9 @@ src/
 - **Side panel state machine**: Sidebar.tsx manages states: checking → login → idle → scanning → cart → finish. The `vehicleExpanded` flag controls whether the iframe or collapsed header is shown.
 - **Two work modes**: `vehicle` (select vehicle by plate) and `order` (select order via AutoFlex integration). Mode determined at login based on autoflex_connected.
 - **BubbleIframe zoom correction**: Uses ResizeObserver to detect when the side panel is narrower than 370px (e.g. Dia browser over-scaling). Applies transform:scale() to give the iframe a wider viewport. No-op on standard Chrome.
-- **Bubble version in URLs**: The BUBBLE_BASE_URL in constants.ts includes a version slug (version-138bg). This changes when the Bubble app is updated.
+- **Bubble version in URLs**: constants.ts has a `BUBBLE_VERSION` constant ('version-138bg') used to build all Bubble URLs. Updating this single value changes all API and page URLs. This changes when the Bubble app is updated.
+- **iframe sandbox**: BubbleIframe applies `sandbox="allow-scripts allow-same-origin allow-forms allow-popups"` — required for Chrome Web Store.
+- **Cart pure functions**: `mergeCart` and `aiPartsToCartItems` are extracted to `lib/cart-utils.ts` for testability. Sidebar imports them.
 
 ## Gotchas
 
@@ -58,6 +62,17 @@ src/
 - The manifest.json at project root is the SOURCE manifest (references .ts files). The built manifest in dist_chrome/ is the compiled one.
 - Tailwind v4 is used (@import "tailwindcss" syntax, not @tailwind directives)
 - VehiclePanel/OrderPanel only render the collapsed header bar — the expanded iframe is in Sidebar.tsx directly
+
+## Testing
+
+217 tests across 10 files (Vitest + jsdom + @testing-library/react):
+
+```bash
+npx vitest run --environment jsdom       # Run all tests
+npx vitest run src/lib/ai.test.ts --environment jsdom  # Run single file
+```
+
+Test files are co-located: `foo.test.ts` next to `foo.ts`.
 
 ## Branching
 
