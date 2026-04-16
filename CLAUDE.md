@@ -55,6 +55,14 @@ src/
 - **iframe sandbox**: BubbleIframe applies `sandbox="allow-scripts allow-same-origin allow-forms allow-popups"` — required for Chrome Web Store.
 - **Cart pure functions**: `mergeCart` and `aiPartsToCartItems` are extracted to `lib/cart-utils.ts` for testability. Sidebar imports them.
 
+## Code style / design system
+
+- Primary color: `#00C6B2` (teal), text on primary: `#473150`
+- Buttons: `rounded-full`, `text-xs font-semibold`
+- Font: Inter (via Tailwind config)
+- All user-facing strings must be in `src/lib/i18n.ts` (EN + NL) — use `useT(lang)` hook
+- No `console.log` in source files — use `console.warn`/`console.error` for real errors only
+
 ## Gotchas
 
 - `npm install` requires `--legacy-peer-deps` due to @crxjs/vite-plugin peer conflicts
@@ -62,6 +70,8 @@ src/
 - The manifest.json at project root is the SOURCE manifest (references .ts files). The built manifest in dist_chrome/ is the compiled one.
 - Tailwind v4 is used (@import "tailwindcss" syntax, not @tailwind directives)
 - VehiclePanel/OrderPanel only render the collapsed header bar — the expanded iframe is in Sidebar.tsx directly
+- Crop hint overlay passes `lang` from Sidebar → background → content script for EN/NL "Got it!" button
+- `dist_chrome/` must be rebuilt after source changes — stale builds have caused production errors
 
 ## Testing
 
@@ -86,6 +96,18 @@ Project-level plugins are configured in `.claude/settings.json` (checked into gi
 - **claude-md-management** — CLAUDE.md auditing and improvement
 - **remember** — Session state persistence
 - **superpowers-chrome** — Direct browser control via Chrome DevTools Protocol
+
+## Hookify rules (enforced by Claude Code)
+
+5 rules in `.claude/hookify.*.local.md` enforce quality for all developers:
+
+| Rule | Action | Trigger |
+|------|--------|---------|
+| `require-tests-before-stop` | block | Must run tests + build before completing |
+| `block-console-log` | block | No console.log/debug/info in src/*.ts(x) |
+| `require-build-before-push` | warn | Reminds to rebuild before git push |
+| `warn-secrets` | block | No hardcoded API_KEY/SECRET/TOKEN in source |
+| `require-i18n-design-system` | block | No hardcoded strings in components |
 
 ## Branching
 
