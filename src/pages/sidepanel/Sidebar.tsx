@@ -219,6 +219,8 @@ export default function Sidebar() {
     if (msg.type === 'partsiq:switch_to_vehicle') {
       setWorkModeState('vehicle');
       void setWorkMode('vehicle');
+      setVehicleExpanded(true);
+      setState('idle');
       return;
     }
   });
