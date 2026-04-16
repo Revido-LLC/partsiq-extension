@@ -34,7 +34,7 @@ export default function Sidebar() {
   const [vehicleExpanded, setVehicleExpanded] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanScreenshot, setScanScreenshot] = useState<string | null>(null);
-const [iframeReady, setIframeReady] = useState(false);
+  const [iframeReady, setIframeReady] = useState(false);
   const [finishOrder, setFinishOrder] = useState<Order | null>(null);
   const [loginOverlay, setLoginOverlay] = useState(true);
   const loginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

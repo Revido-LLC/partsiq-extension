@@ -34,7 +34,6 @@ describe('useT', () => {
       expect(t.noPartsFound).toBe('No parts found on this page.');
       expect(t.searchFinished).toBe('Search finished.');
       expect(t.checkStatus).toBe('Check part status in Parts iQ.');
-      expect(t.pageChanged).toBe('Page changed — scan now?');
       expect(t.sending).toBe('Sending…');
       expect(t.sent).toBe('✓ Sent');
       expect(t.errorLabel).toBe('Error');
@@ -90,7 +89,6 @@ describe('useT', () => {
       expect(t.noPartsFound).toBe('Geen onderdelen gevonden op deze pagina.');
       expect(t.searchFinished).toBe('Zoekopdracht afgerond.');
       expect(t.checkStatus).toBe('Controleer de status van de onderdelen in Parts iQ.');
-      expect(t.pageChanged).toBe('Pagina gewijzigd — nu scannen?');
       expect(t.sending).toBe('Verzenden…');
       expect(t.sent).toBe('✓ Verzonden');
       expect(t.errorLabel).toBe('Fout');

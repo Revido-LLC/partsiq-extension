@@ -444,7 +444,6 @@ describe('Footer scan button', () => {
     const onScan = vi.fn();
     render(<CartState {...defaultProps({ onScan })} />);
 
-    // Without pendingUrl there is only one "Scan page" button (footer)
     fireEvent.click(screen.getByRole('button', { name: 'Scan page' }));
 
     expect(onScan).toHaveBeenCalledOnce();

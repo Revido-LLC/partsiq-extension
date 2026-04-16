@@ -137,12 +137,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       })();
       return true;
 
-    case 'url_changed':
-      // Relay to sidebar
-      chrome.runtime.sendMessage({
-        type: 'page_url_changed',
-        url: msg.url as string,
-      }).catch(() => {});
-      break;
   }
 });
