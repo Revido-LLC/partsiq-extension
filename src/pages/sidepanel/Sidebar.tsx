@@ -12,7 +12,7 @@ import {
 import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
 import { captureScreenshot } from '@lib/screenshot';
 import { extractPartsFromScreenshot } from '@lib/ai';
-import type { AiPart } from '@lib/ai';
+import { aiPartsToCartItems, mergeCart } from '@lib/cart-utils';
 import BubbleIframe from '@components/BubbleIframe';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
@@ -230,30 +230,6 @@ export default function Sidebar() {
     } catch {
       return '';
     }
-  };
-
-  const aiPartsToCartItems = (parts: AiPart[], sourceUrl: string, autoSend = false): CartItem[] =>
-    parts.map(p => ({
-      id: crypto.randomUUID(),
-      name: p.name,
-      oem: p.oem ?? '',
-      price: p.price,
-      deliveryDays: p.delivery_days,
-      stock: p.stock,
-      supplier: p.supplier ?? '',
-      sourceUrl,
-      scannedAt: new Date().toISOString(),
-      status: 'pending' as const,
-      checked: autoSend,
-      autoSend,
-    }));
-
-  const mergeCart = (existing: CartItem[], incoming: CartItem[], currentUrl: string): CartItem[] => {
-    // Remove pending/error from same URL (they'll be replaced by new scan)
-    const kept = existing.filter(
-      item => !(item.sourceUrl === currentUrl && (item.status === 'pending' || item.status === 'error'))
-    );
-    return [...kept, ...incoming];
   };
 
   const processScan = async (base64: string, isCrop = false): Promise<void> => {
