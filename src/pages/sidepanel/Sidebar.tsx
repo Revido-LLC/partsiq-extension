@@ -36,6 +36,7 @@ export default function Sidebar() {
   const [loginError, setLoginError] = useState(false);
   const [pendingUrl, setPendingUrl] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
+  const [finishOrder, setFinishOrder] = useState<Order | null>(null);
   const [loginOverlay, setLoginOverlay] = useState(true);
   const loginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -321,6 +322,7 @@ export default function Sidebar() {
   };
 
   const handleFinish = async () => {
+    setFinishOrder(order);
     setCartState([]);
     setVehicleState(null);
     setOrderState(null);
@@ -330,6 +332,7 @@ export default function Sidebar() {
   };
 
   const handleNewQuote = () => {
+    setFinishOrder(null);
     if (autoflex) {
       setWorkModeState('order');
       void setWorkMode('order');
@@ -377,7 +380,7 @@ export default function Sidebar() {
   }
 
   if (state === 'finish') {
-    return <FinishState lang={lang} workMode={workMode} order={order} onNewQuote={handleNewQuote} />;
+    return <FinishState lang={lang} workMode={workMode} order={finishOrder} onNewQuote={handleNewQuote} />;
   }
 
   // idle / scanning / cart / fallback — all show the panel header
