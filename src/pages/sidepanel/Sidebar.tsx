@@ -275,7 +275,7 @@ export default function Sidebar() {
       const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
       if (!tab?.id) return;
       setScanError(null);
-      await chrome.runtime.sendMessage({ type: 'take_crop_init', tabId: tab.id });
+      await chrome.runtime.sendMessage({ type: 'take_crop_init', tabId: tab.id, lang });
       // Result arrives via crop_ready in the chrome.runtime.onMessage listener
       // State stays as-is while user makes selection on the page
     } catch (err) {
