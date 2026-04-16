@@ -303,4 +303,19 @@ describe('BubbleIframe', () => {
       expect(wrapper.className).toBe('relative flex flex-col ');
     });
   });
+
+  // ── Security attributes ──────────────────────────────────────────────
+
+  describe('iframe security attributes', () => {
+    it('has sandbox attribute with required permissions', () => {
+      const { container } = render(
+        <BubbleIframe src="https://example.com" title="Test" />,
+      );
+
+      const iframe = getIframe(container);
+      expect(iframe.getAttribute('sandbox')).toBe(
+        'allow-scripts allow-same-origin allow-forms allow-popups',
+      );
+    });
+  });
 });

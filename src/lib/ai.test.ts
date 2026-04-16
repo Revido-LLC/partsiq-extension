@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import { extractPartsFromScreenshot, AiPart } from './ai';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -30,7 +30,18 @@ function mockFetch(status: number, body: unknown): void {
   );
 }
 
-// ── Teardown ───────────────────────────────────────────────────────────────
+// ── Setup / teardown ───────────────────────────────────────────────────────
+
+beforeAll(() => {
+  // jsdom may not implement AbortSignal.timeout — polyfill it so the module loads
+  if (typeof AbortSignal.timeout !== 'function') {
+    AbortSignal.timeout = (ms: number) => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(new DOMException('TimeoutError', 'TimeoutError')), ms);
+      return controller.signal;
+    };
+  }
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -309,6 +320,40 @@ describe('extractPartsFromScreenshot', () => {
       const result = await extractPartsFromScreenshot('img');
 
       expect(result).toEqual([]);
+    });
+  });
+
+  // ── AbortSignal.timeout ────────────────────────────────────────────────
+
+  describe('AbortSignal.timeout', () => {
+    it('includes AbortSignal.timeout in fetch options', async () => {
+      mockFetch(200, { parts: [makePart()] });
+
+      const timeoutSignal = new AbortController().signal;
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeoutSignal);
+
+      await extractPartsFromScreenshot('img');
+
+      // AbortSignal.timeout should have been called with 30 000 ms
+      expect(timeoutSpy).toHaveBeenCalledWith(30_000);
+
+      // The signal returned by AbortSignal.timeout must be forwarded to fetch
+      const [, init] = vi.mocked(fetch).mock.calls[0];
+      expect((init as RequestInit).signal).toBe(timeoutSignal);
+    });
+  });
+
+  // ── No console.log calls ───────────────────────────────────────────────
+
+  describe('no console.log calls', () => {
+    it('does not call console.log during a successful extraction', async () => {
+      mockFetch(200, { parts: [makePart()] });
+
+      const logSpy = vi.spyOn(console, 'log');
+
+      await extractPartsFromScreenshot('base64ok==');
+
+      expect(logSpy).not.toHaveBeenCalled();
     });
   });
 });
