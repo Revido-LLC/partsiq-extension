@@ -9,7 +9,6 @@ interface Props {
   vehicle: Vehicle | null;
   order: Order | null;
   workMode: WorkMode;
-  autoflex: boolean;
   pendingUrl: string | null;
   onScan: () => void;
   onCrop: () => void;
@@ -19,7 +18,7 @@ interface Props {
 }
 
 export default function CartState({
-  lang, cart, vehicle, order, workMode, autoflex,
+  lang, cart, vehicle, order, workMode,
   pendingUrl, onScan, onCrop, onUpdateCart, onFinish, onDismissBanner,
 }: Props) {
   const t = useT(lang);

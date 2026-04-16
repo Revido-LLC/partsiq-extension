@@ -412,7 +412,6 @@ export default function Sidebar() {
             vehicle={vehicle}
             order={order}
             workMode={workMode}
-            autoflex={autoflex}
             pendingUrl={pendingUrl}
             onScan={handleBannerScan}
             onCrop={handleCrop}
