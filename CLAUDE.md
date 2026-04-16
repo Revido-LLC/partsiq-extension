@@ -74,6 +74,19 @@ npx vitest run src/lib/ai.test.ts --environment jsdom  # Run single file
 
 Test files are co-located: `foo.test.ts` next to `foo.ts`.
 
+## Claude Code plugins
+
+Project-level plugins are configured in `.claude/settings.json` (checked into git). When a developer opens this repo with Claude Code, the plugins auto-activate. Installed plugins:
+
+- **superpowers** — TDD, plans, brainstorming, parallel agents, code review
+- **code-simplifier** — Review changed code for reuse and efficiency
+- **context7** — Fetch current library/framework docs
+- **pr-review-toolkit** — Multi-agent PR reviews (code, tests, errors, types)
+- **chrome-devtools-mcp** — Browser DevTools integration for debugging
+- **claude-md-management** — CLAUDE.md auditing and improvement
+- **remember** — Session state persistence
+- **superpowers-chrome** — Direct browser control via Chrome DevTools Protocol
+
 ## Branching
 
 - main: production (default)
