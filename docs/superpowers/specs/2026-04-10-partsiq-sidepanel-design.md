@@ -2,7 +2,7 @@
 
 > **Status:** Implemented & Tested
 > **Date:** 2026-04-10
-> **Updated:** 2026-04-14 (2)
+> **Updated:** 2026-04-16 (6)
 > **Approach:** Clean rewrite — sidepanel UI from scratch, reusing background.ts / storage.ts / ai.ts utilities
 
 ---
@@ -93,6 +93,8 @@ checking → login → idle → cart → finish
 | `partsiq:extension_ready` | — | `iframeReady = true` → remove spinner overlay do VehiclePanel/OrderPanel |
 | `partsiq:vehicle_selected` | `{ plate, id }` | salva veículo, recolhe VehiclePanel, vai para `cart` |
 | `partsiq:order_selected` | `{ plate, id }` | salva ordem, recolhe OrderPanel, vai para `cart` |
+| `partsiq:switch_to_vehicle` | — | muda `workMode` para `'vehicle'`, persiste no storage. Bubble já navegou internamente para seleção de veículo |
+| `partsiq:switch_to_order` | — | muda `workMode` para `'order'`, reseta `iframeReady`, vai para `idle`. Bubble já navegou para seleção de ordem |
 
 ### Extensão → Background (`chrome.runtime.sendMessage`)
 
@@ -268,9 +270,9 @@ A chave do OpenRouter fica **exclusivamente no Bubble** (server-side). A extens�
 
 ### Re-scan (URL mudou)
 
-Content script detecta mudança de URL → envia `url_changed` → background relay → sidebar mostra banner: *"Page changed — scan now?"*
+Content script detecta mudança de URL → envia `url_changed` → background relay → **ignorado pelo sidebar** (banner removido).
 
-Ao confirmar scan → aplica **regra de merge**:
+O usuário inicia o scan manualmente quando quiser. Ao fazer scan em uma URL diferente das peças já no carrinho, aplica **regra de merge**:
 
 | Peça no carrinho | `sourceUrl` === URL atual? | Ação |
 |---|---|---|
@@ -305,7 +307,9 @@ Baseado no Bubble design system do PartsIQ:
 
 ```
 ┌─────────────────────────────┐
-│ [badge: KCV-1235] [Change]  │  ← border #E6E6E6, texto #525252, change em #00C6B2
+│ [badge: KCV-1235] [Change]  │  ← VehiclePanel / OrderPanel
+├─────────────────────────────┤
+│ [✂ Crop selection][⊡ Scan] │  ← botões acima da lista, com ícones
 ├─────────────────────────────┤
 │ ☐ Filtro de óleo — €12,50  │  ← checkbox accent #00C6B2, nome #525252
 │   Part number: 06J115403 ✏️ │
@@ -317,9 +321,7 @@ Baseado no Bubble design system do PartsIQ:
 │─────────────────────────────│
 │  [+ Add part manually]      │  ← texto #00C6B2
 ├─────────────────────────────┤
-│  [Crop]      [Scan page]    │  ← Crop=primary, Scan=outline
-│  [Clear unsent]             │  ← outline, full width
-│  [Finish search]            │  ← primary, full width
+│ [🗑 Clear unsent][✓ Finish] │  ← mesma linha, com ícones
 └─────────────────────────────┘
 ```
 
@@ -352,7 +354,7 @@ credentials: 'include'
   "supplier": string,
   "source_url": string,
   "work_mode": "vehicle" | "order",
-  "autoflex_integration": "yes" | "no",  // "yes" se autoflex_connected no login
+  "autoflex_integration": "yes" | "no",  // "yes" se workMode === 'order', "no" se workMode === 'vehicle'
   "confidence": 90,
   "vehicle_id": string,             // se workMode = 'vehicle'
   "vehicle_plate": string,          // se workMode = 'vehicle'
@@ -422,12 +424,20 @@ Remove peças `pending` ou `error`. Pede confirmação: *"Remove X unsent parts?
 │                             │
 │   [Check part status in     │  ← link #00C6B2, abre nova aba
 │    Parts iQ.]               │    vehicle → /dash/parts
-│                             │    order   → /dash/autoflex
+│                             │    order   → /dash/autoflex//sourced-parts
+│                             │             ?work-order-id=<order.id>
 │   [New quote]               │
 └─────────────────────────────┘
 ```
 
-"New quote" → `setIframeReady(false)` + vai para `idle`.
+**URLs do link "Check part status":**
+- `workMode = 'vehicle'` → `${BUBBLE_BASE_URL}/dash/parts`
+- `workMode = 'order'` + order válida → `${BUBBLE_BASE_URL}/dash/autoflex//sourced-parts?work-order-id=${order.id}`
+- `workMode = 'order'` + order null (edge case) → `${BUBBLE_BASE_URL}/dash/autoflex`
+
+**Snapshot de order:** `Sidebar.tsx` mantém estado `finishOrder: Order | null` que captura `order` imediatamente antes de `handleFinish` limpar o estado. `FinishState` recebe `finishOrder` (não `order`) para garantir que o `order.id` correto esteja disponível mesmo após a limpeza.
+
+"New quote" → `setFinishOrder(null)` + `setIframeReady(false)` + vai para `idle`.
 
 ---
 
@@ -439,7 +449,7 @@ Remove peças `pending` ou `error`. Pede confirmação: *"Remove X unsent parts?
 | Aba aberta antes da extensão ser carregada | `ping` falha → background injeta content script via `chrome.scripting.executeScript` |
 | `remove_part` falha | Status volta para `sent`, erro inline |
 | `ai_extract` falha | Erro no scan com botão "Retry" |
-| URL muda durante `scanning` | Banner aguarda — não interrompe o scan |
+| URL muda durante `scanning` | Evento ignorado — não interrompe o scan |
 | Sidebar fechado com peças `pending` | Carrinho persiste no storage |
 | Abertura com veículo/ordem já selecionado | Vai direto para `cart` com contexto e carrinho do storage |
 | Abertura sem veículo/ordem | Vai para `idle` → seleção normal |
@@ -494,6 +504,29 @@ Alterar **somente** `src/lib/constants.ts`:
 ---
 
 ## Changelog
+
+### 2026-04-16 (4 mudanças)
+
+**FinishState — link com `work-order-id`**
+- Modo order: link "Check part status" aponta para `/dash/autoflex//sourced-parts?work-order-id=<order.id>`
+- `FinishState` recebe nova prop `order: Order | null` para construir a URL
+
+**Finish order snapshot**
+- Bug fix: `handleFinish` limpava `order` antes de `FinishState` renderizar → `order.id` era `null`
+- Novo estado `finishOrder: Order | null` em `Sidebar.tsx` captura `order` antes da limpeza
+- `FinishState` agora recebe `finishOrder` em vez de `order`
+- `handleNewQuote` reseta `finishOrder = null`
+
+**Bubble tabs — handlers de troca de modo**
+- Novo: `partsiq:switch_to_order` → `workMode = 'order'`, `iframeReady = false`, vai para `idle`
+- Existente (documentado): `partsiq:switch_to_vehicle` → `workMode = 'vehicle'`, persiste no storage
+- Reset automático: ao expandir o VehiclePanel com `autoflex = true`, `workMode` reseta para `'order'`
+- `autoflex_integration` corrigido: baseado em `workMode === 'order'`, não no flag `autoflex`
+
+**Cart UI — redesign visual**
+- Banner "Page changed — scan now?" removido por completo
+- Botões Crop/Scan movidos para acima da lista de peças (abaixo do header do painel), com ícones SVG
+- Footer simplificado: Clear unsent + Finish search na mesma linha com ícones
 
 ### 2026-04-14 (2)
 
