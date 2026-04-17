@@ -1,4 +1,4 @@
-const BUBBLE_VERSION = 'version-138bg';
+const BUBBLE_VERSION = 'version-test';
 
 export const CONFIG = {
   BUBBLE_BASE_URL: `https://app.parts-iq.com/${BUBBLE_VERSION}`,
