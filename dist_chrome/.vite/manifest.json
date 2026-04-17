@@ -5,17 +5,17 @@
     "src": "../../../@crx/manifest",
     "isEntry": true
   },
-  "_constants-clFm4_O1.js": {
-    "file": "assets/constants-clFm4_O1.js",
-    "name": "constants"
+  "_image-utils-BC3xEsaZ.js": {
+    "file": "assets/image-utils-BC3xEsaZ.js",
+    "name": "image-utils"
   },
   "src/background/index.ts": {
-    "file": "assets/index.ts-BJ1DcF3a.js",
+    "file": "assets/index.ts-PTUOt2gP.js",
     "name": "index.ts",
     "src": "src/background/index.ts",
     "isEntry": true,
     "imports": [
-      "_constants-clFm4_O1.js"
+      "_image-utils-BC3xEsaZ.js"
     ]
   },
   "src/content/hide-ybug.ts": {
@@ -25,21 +25,21 @@
     "isEntry": true
   },
   "src/content/index.ts": {
-    "file": "assets/index.ts-ByNV9l4I.js",
+    "file": "assets/index.ts-DL5Dkqzv.js",
     "name": "index.ts",
     "src": "src/content/index.ts",
     "isEntry": true
   },
   "src/pages/sidepanel/index.html": {
-    "file": "assets/index.html-ArndcpKk.js",
+    "file": "assets/index.html-D78-uqrs.js",
     "name": "index.html",
     "src": "src/pages/sidepanel/index.html",
     "isEntry": true,
     "imports": [
-      "_constants-clFm4_O1.js"
+      "_image-utils-BC3xEsaZ.js"
     ],
     "css": [
-      "assets/index-CVf9ebjA.css"
+      "assets/index-D8Da5Er2.css"
     ]
   }
 }
