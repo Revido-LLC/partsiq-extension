@@ -32,7 +32,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.ts-DL5Dkqzv.js"
+        "assets/index.ts-CJr-IQMd.js"
       ],
       "matches": [
         "<all_urls>"
@@ -61,7 +61,7 @@
         "<all_urls>"
       ],
       "resources": [
-        "assets/index.ts-DL5Dkqzv.js"
+        "assets/index.ts-CJr-IQMd.js"
       ],
       "use_dynamic_url": false
     },

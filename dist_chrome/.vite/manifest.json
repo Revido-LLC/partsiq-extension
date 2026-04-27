@@ -25,13 +25,13 @@
     "isEntry": true
   },
   "src/content/index.ts": {
-    "file": "assets/index.ts-DL5Dkqzv.js",
+    "file": "assets/index.ts-CJr-IQMd.js",
     "name": "index.ts",
     "src": "src/content/index.ts",
     "isEntry": true
   },
   "src/pages/sidepanel/index.html": {
-    "file": "assets/index.html-ClK64I-G.js",
+    "file": "assets/index.html-Bm6lE8-z.js",
     "name": "index.html",
     "src": "src/pages/sidepanel/index.html",
     "isEntry": true,
@@ -39,7 +39,7 @@
       "_image-utils-CKbKAYd5.js"
     ],
     "css": [
-      "assets/index-D8Da5Er2.css"
+      "assets/index-CuEP6aTs.css"
     ]
   }
 }
