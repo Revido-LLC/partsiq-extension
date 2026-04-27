@@ -13,7 +13,7 @@ export default function ScanningState({ lang, error, screenshot, onRetry }: Prop
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center">
+      <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center bg-[#F0F0F0]">
         <p className="text-sm text-red-600">{t.scanError}</p>
         <p className="text-xs text-gray-500">{error}</p>
         <button
@@ -27,7 +27,7 @@ export default function ScanningState({ lang, error, screenshot, onRetry }: Prop
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 px-4">
+    <div className="flex flex-col items-center justify-center h-full gap-4 px-4 bg-[#F0F0F0]">
       {screenshot && (
         <div className="w-full rounded overflow-hidden border border-gray-200 relative">
           <img

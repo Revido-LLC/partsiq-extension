@@ -328,7 +328,7 @@ export default function Sidebar() {
   // ── Render ─────────────────────────────────────────────────────────────────
   if (state === 'checking' || state === 'login') {
     return (
-      <div className="relative h-full">
+      <div className="relative h-full bg-[#F0F0F0]">
         <LoginState onLoad={handleLoginIframeLoad} />
         {loginOverlay && (
           <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
@@ -373,7 +373,7 @@ export default function Sidebar() {
   //  when switching between order and vehicle mode)
   if (state === 'idle' && vehicleExpanded) {
     return (
-      <div className={`relative flex flex-col h-screen${!autoflex ? ' pt-5' : ''}`}>
+      <div className={`relative flex flex-col h-screen bg-[#F0F0F0]${!autoflex ? ' pt-5' : ''}`}>
         <BubbleIframe
           src={buildBubbleUrl('extension')}
           title="Select"
@@ -389,7 +389,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-[#F0F0F0]">
       {!vehicleExpanded && panelHeader}
 
       {state === 'scanning' && (
