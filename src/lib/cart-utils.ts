@@ -28,20 +28,10 @@ export const aiPartsToCartItems = (
 
 /**
  * Merges an incoming set of cart items into the existing cart.
- * Any pending or error items that share the same source URL are dropped first
- * (they are replaced by the fresh scan), then the incoming items are appended.
+ * Pending/error cleanup is done by the caller before invoking this function.
+ * This function simply concatenates existing (sent/sending items) with incoming.
  */
 export const mergeCart = (
   existing: CartItem[],
   incoming: CartItem[],
-  currentUrl: string,
-): CartItem[] => {
-  const kept = existing.filter(
-    item =>
-      !(
-        item.sourceUrl === currentUrl &&
-        (item.status === 'pending' || item.status === 'error')
-      ),
-  );
-  return [...kept, ...incoming];
-};
+): CartItem[] => [...existing, ...incoming];

@@ -39,113 +39,45 @@ function makeCartItem(overrides: Partial<CartItem> = {}): CartItem {
 // ── mergeCart ─────────────────────────────────────────────────────────────
 
 describe('mergeCart', () => {
-  const URL_A = 'https://example.com/a';
-  const URL_B = 'https://example.com/b';
+  it('concatenates existing and incoming, existing first', () => {
+    const existing = [makeCartItem({ id: 'a' }), makeCartItem({ id: 'b' })];
+    const incoming = [makeCartItem({ id: 'c' })];
 
-  it('removes pending items from the same URL and appends incoming', () => {
-    const existing = [
-      makeCartItem({ id: '1', sourceUrl: URL_A, status: 'pending' }),
-    ];
-    const incoming = [makeCartItem({ id: '2', sourceUrl: URL_A, status: 'pending' })];
+    const result = mergeCart(existing, incoming);
 
-    const result = mergeCart(existing, incoming, URL_A);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('2');
+    expect(result.map(i => i.id)).toEqual(['a', 'b', 'c']);
   });
 
-  it('removes error items from the same URL', () => {
-    const existing = [
-      makeCartItem({ id: '1', sourceUrl: URL_A, status: 'error' }),
-    ];
-    const incoming = [makeCartItem({ id: '2', sourceUrl: URL_A, status: 'pending' })];
+  it('returns incoming when existing is empty', () => {
+    const incoming = [makeCartItem({ id: '1' })];
 
-    const result = mergeCart(existing, incoming, URL_A);
-
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('2');
-  });
-
-  it('keeps sent items from the same URL', () => {
-    const existing = [
-      makeCartItem({ id: '1', sourceUrl: URL_A, status: 'sent' }),
-    ];
-    const incoming = [makeCartItem({ id: '2', sourceUrl: URL_A, status: 'pending' })];
-
-    const result = mergeCart(existing, incoming, URL_A);
-
-    expect(result).toHaveLength(2);
-    expect(result.map(i => i.id)).toEqual(['1', '2']);
-  });
-
-  it('keeps sending items from the same URL', () => {
-    const existing = [
-      makeCartItem({ id: '1', sourceUrl: URL_A, status: 'sending' }),
-    ];
-    const incoming = [makeCartItem({ id: '2', sourceUrl: URL_A, status: 'pending' })];
-
-    const result = mergeCart(existing, incoming, URL_A);
-
-    expect(result).toHaveLength(2);
-    expect(result[0].id).toBe('1');
-    expect(result[1].id).toBe('2');
-  });
-
-  it('keeps all items from a different URL regardless of status', () => {
-    const existing = [
-      makeCartItem({ id: '1', sourceUrl: URL_B, status: 'pending' }),
-      makeCartItem({ id: '2', sourceUrl: URL_B, status: 'error' }),
-      makeCartItem({ id: '3', sourceUrl: URL_B, status: 'sent' }),
-    ];
-    const incoming = [makeCartItem({ id: '4', sourceUrl: URL_A, status: 'pending' })];
-
-    const result = mergeCart(existing, incoming, URL_A);
-
-    expect(result).toHaveLength(4);
-    expect(result.map(i => i.id)).toEqual(['1', '2', '3', '4']);
-  });
-
-  it('appends incoming items after the kept existing items', () => {
-    const existing = [
-      makeCartItem({ id: 'kept-1', sourceUrl: URL_B, status: 'sent' }),
-      makeCartItem({ id: 'dropped', sourceUrl: URL_A, status: 'pending' }),
-      makeCartItem({ id: 'kept-2', sourceUrl: URL_B, status: 'pending' }),
-    ];
-    const incoming = [
-      makeCartItem({ id: 'new-1', sourceUrl: URL_A, status: 'pending' }),
-      makeCartItem({ id: 'new-2', sourceUrl: URL_A, status: 'pending' }),
-    ];
-
-    const result = mergeCart(existing, incoming, URL_A);
-
-    expect(result.map(i => i.id)).toEqual(['kept-1', 'kept-2', 'new-1', 'new-2']);
-  });
-
-  it('works with empty existing cart', () => {
-    const incoming = [makeCartItem({ id: '1', sourceUrl: URL_A, status: 'pending' })];
-
-    const result = mergeCart([], incoming, URL_A);
+    const result = mergeCart([], incoming);
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('1');
   });
 
-  it('works with empty incoming, keeps existing items that are not pending/error at currentUrl', () => {
-    const existing = [
-      makeCartItem({ id: '1', sourceUrl: URL_A, status: 'sent' }),
-      makeCartItem({ id: '2', sourceUrl: URL_A, status: 'pending' }),
-    ];
+  it('returns existing when incoming is empty', () => {
+    const existing = [makeCartItem({ id: '1' })];
 
-    const result = mergeCart(existing, [], URL_A);
+    const result = mergeCart(existing, []);
 
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('1');
   });
 
-  it('returns empty array when both existing and incoming are empty', () => {
-    const result = mergeCart([], [], URL_A);
+  it('returns empty array when both are empty', () => {
+    expect(mergeCart([], [])).toEqual([]);
+  });
 
-    expect(result).toEqual([]);
+  it('does not mutate existing or incoming', () => {
+    const existing = [makeCartItem({ id: 'a' })];
+    const incoming = [makeCartItem({ id: 'b' })];
+
+    mergeCart(existing, incoming);
+
+    expect(existing).toHaveLength(1);
+    expect(incoming).toHaveLength(1);
   });
 });
 
