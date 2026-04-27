@@ -236,14 +236,18 @@ export default function Sidebar() {
     setScanError(null);
     try {
       const parts = await extractPartsFromScreenshot(base64);
+      // Always clear pending/error before updating cart — keeps list clean across scans
+      const kept = cartRef.current.filter(i => i.status === 'sent' || i.status === 'sending');
       if (parts.length === 0) {
+        setCartState(kept);
+        await setCart(kept);
         setState('fallback');
         return;
       }
       const url = await getCurrentUrl();
       const autoSend = isCrop && parts.length <= 2;
       const newItems = aiPartsToCartItems(parts, url, autoSend);
-      const merged = mergeCart(cartRef.current, newItems, url);
+      const merged = mergeCart(kept, newItems);
       setCartState(merged);
       await setCart(merged);
       setState('cart');
@@ -369,7 +373,7 @@ export default function Sidebar() {
   //  when switching between order and vehicle mode)
   if (state === 'idle' && vehicleExpanded) {
     return (
-      <div className="relative flex flex-col h-screen">
+      <div className={`relative flex flex-col h-screen${!autoflex ? ' pt-5' : ''}`}>
         <BubbleIframe
           src={buildBubbleUrl('extension')}
           title="Select"
@@ -413,6 +417,7 @@ export default function Sidebar() {
       {state === 'fallback' && (
         <FallbackState
           lang={lang}
+          cart={cart}
           onScan={handleScan}
           onAddManual={(item) => {
             const updated = [...cartRef.current, item];
