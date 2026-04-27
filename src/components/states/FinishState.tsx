@@ -18,7 +18,7 @@ export default function FinishState({ lang, workMode, order, onNewQuote }: Props
       : `${CONFIG.BUBBLE_BASE_URL}/dash/parts`;
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 px-4 text-center">
+    <div className="flex flex-col items-center justify-center h-full gap-4 px-4 text-center bg-[#F0F0F0]">
       <div className="text-3xl text-[#00C6B2]">✓</div>
       <p className="text-sm font-medium text-[#525252]">{t.searchFinished}</p>
       <button
