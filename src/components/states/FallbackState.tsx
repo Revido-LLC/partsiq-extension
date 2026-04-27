@@ -14,7 +14,7 @@ export default function FallbackState({ lang, cart, onAddManual, onCrop, onScan 
   const t = useT(lang);
   const [showManualForm, setShowManualForm] = useState(false);
 
-  const sentItems = cart.filter(i => i.status === 'sent');
+  const sentItems = cart.filter(i => i.status === 'sent' || i.status === 'sending');
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

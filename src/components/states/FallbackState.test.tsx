@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import FallbackState from './FallbackState';
@@ -27,13 +27,23 @@ function makeSentItem(overrides: Partial<CartItem> = {}): CartItem {
   };
 }
 
-const defaultProps = {
-  lang: 'en' as const,
-  cart: [],
-  onAddManual: vi.fn(),
-  onCrop: vi.fn(),
-  onScan: vi.fn(),
+let defaultProps: {
+  lang: 'en';
+  cart: CartItem[];
+  onAddManual: ReturnType<typeof vi.fn>;
+  onCrop: ReturnType<typeof vi.fn>;
+  onScan: ReturnType<typeof vi.fn>;
 };
+
+beforeEach(() => {
+  defaultProps = {
+    lang: 'en',
+    cart: [],
+    onAddManual: vi.fn(),
+    onCrop: vi.fn(),
+    onScan: vi.fn(),
+  };
+});
 
 describe('FallbackState — empty cart', () => {
   it('shows the "no parts found" message', () => {
@@ -96,5 +106,15 @@ describe('FallbackState — cart with sent items', () => {
     );
     expect(screen.getByRole('button', { name: /crop/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /scan/i })).toBeInTheDocument();
+  });
+
+  it('renders items with sending status', () => {
+    render(
+      <FallbackState
+        {...defaultProps}
+        cart={[makeSentItem({ id: '1', name: 'Sending Part', status: 'sending' })]}
+      />,
+    );
+    expect(screen.getByText('Sending Part')).toBeInTheDocument();
   });
 });

@@ -415,18 +415,20 @@ export default function Sidebar() {
       )}
 
       {state === 'fallback' && (
-        <FallbackState
-          lang={lang}
-          cart={cart}
-          onScan={handleScan}
-          onAddManual={(item) => {
-            const updated = [...cartRef.current, item];
-            setCartState(updated);
-            void setCart(updated);
-            setState('cart');
-          }}
-          onCrop={handleCrop}
-        />
+        <div className="flex-1 overflow-hidden">
+          <FallbackState
+            lang={lang}
+            cart={cart}
+            onScan={handleScan}
+            onAddManual={(item) => {
+              const updated = [...cartRef.current, item];
+              setCartState(updated);
+              void setCart(updated);
+              setState('cart');
+            }}
+            onCrop={handleCrop}
+          />
+        </div>
       )}
     </div>
   );
