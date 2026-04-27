@@ -12,7 +12,7 @@ const ORDER: Order = { id: 'order-abc-123', plate: 'XX-000-X' };
 
 beforeEach(() => {
   vi.stubGlobal('chrome', {
-    tabs: { update: vi.fn() },
+    tabs: { update: vi.fn().mockResolvedValue(undefined) },
   });
 });
 
@@ -93,6 +93,16 @@ describe('FinishState check-status button', () => {
       const calledUrl = (chrome.tabs.update as ReturnType<typeof vi.fn>).mock.calls[0][0].url as string;
       expect(calledUrl).not.toContain('autoflex');
     });
+  });
+
+  it('does not throw when chrome.tabs.update rejects', async () => {
+    (chrome.tabs.update as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Restricted tab'));
+    render(
+      <FinishState lang="en" workMode="vehicle" order={null} onNewQuote={vi.fn()} />,
+    );
+    expect(() =>
+      fireEvent.click(screen.getByRole('button', { name: 'Check part status in Parts iQ.' })),
+    ).not.toThrow();
   });
 });
 

@@ -22,7 +22,7 @@ export default function FinishState({ lang, workMode, order, onNewQuote }: Props
       <div className="text-3xl text-[#00C6B2]">✓</div>
       <p className="text-sm font-medium text-[#525252]">{t.searchFinished}</p>
       <button
-        onClick={() => chrome.tabs.update({ url: dashUrl })}
+        onClick={() => { void chrome.tabs.update({ url: dashUrl }).catch(() => {}); }}
         className="px-4 py-2 border border-[#00C6B2] text-[#00C6B2] text-xs font-medium rounded-full hover:bg-[#F0FDFB] transition-colors"
       >
         {t.checkStatus}
