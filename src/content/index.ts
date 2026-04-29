@@ -14,7 +14,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     setTimeout(() => sendResponse({ done: true }), 200);
     return true;
   } else if (msg.type === 'start_crop') {
-    injectCropHint((msg.lang as string) ?? 'en', () => injectCropOverlay());
+    const lang = (msg.lang as string) ?? 'en';
+    chrome.storage.local.get('partsiq_skip_crop_hint', (result) => {
+      if (result.partsiq_skip_crop_hint) {
+        injectCropOverlay();
+      } else {
+        injectCropHint(lang, () => injectCropOverlay());
+      }
+    });
     sendResponse({ ok: true });
   }
 });
@@ -90,6 +97,20 @@ function injectCropHint(lang: string, onDone: () => void) {
   label.textContent = isNl ? 'Sleep om een gebied te selecteren' : 'Drag to select an area';
   label.style.cssText = 'color:white;font-size:13px;font-family:sans-serif;font-weight:500;margin:0;';
 
+  const checkRow = document.createElement('label');
+  checkRow.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;';
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.style.cssText = 'width:14px;height:14px;accent-color:#00C6B2;cursor:pointer;';
+
+  const checkLabel = document.createElement('span');
+  checkLabel.textContent = isNl ? 'Niet meer tonen' : "Don't show again";
+  checkLabel.style.cssText = 'color:rgba(255,255,255,0.7);font-size:12px;font-family:sans-serif;';
+
+  checkRow.appendChild(checkbox);
+  checkRow.appendChild(checkLabel);
+
   const btn = document.createElement('button');
   btn.textContent = isNl ? 'Begrepen!' : 'Got it!';
   btn.style.cssText = [
@@ -100,6 +121,7 @@ function injectCropHint(lang: string, onDone: () => void) {
 
   hint.appendChild(box);
   hint.appendChild(label);
+  hint.appendChild(checkRow);
   hint.appendChild(btn);
   document.body.appendChild(hint);
 
@@ -132,6 +154,9 @@ function injectCropHint(lang: string, onDone: () => void) {
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
+    if (checkbox.checked) {
+      chrome.storage.local.set({ partsiq_skip_crop_hint: true });
+    }
     dismiss();
   }, { once: true });
 }
