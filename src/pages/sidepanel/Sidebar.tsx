@@ -11,6 +11,7 @@ import {
 } from '@lib/storage';
 import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
 import { captureScreenshot } from '@lib/screenshot';
+import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import { aiPartsToCartItems, mergeCart } from '@lib/cart-utils';
 import BubbleIframe from '@components/BubbleIframe';
@@ -112,9 +113,19 @@ export default function Sidebar() {
         } else if (msg.imageBase64) {
           setState('scanning');
           setScanScreenshot(null);
-          const raw = msg.imageBase64;
-          const base64 = raw.includes(',') ? raw.split(',')[1] : raw;
-          processScanRef.current(base64, true);
+          void (async () => {
+            const raw = msg.imageBase64!;
+            const base64 = raw.includes(',') ? raw.split(',')[1] : raw;
+            const compressedDataUrl = await compressImage(
+              `data:image/jpeg;base64,${base64}`,
+              1400,
+              0.75,
+            );
+            const compressedBase64 = compressedDataUrl.includes(',')
+              ? compressedDataUrl.split(',')[1]
+              : compressedDataUrl;
+            processScanRef.current(compressedBase64, true);
+          })();
         }
       }
     };
@@ -266,7 +277,8 @@ export default function Sidebar() {
     setScanScreenshot(null);
     try {
       const dataUrl = await captureScreenshot();
-      const base64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+      const compressedDataUrl = await compressImage(dataUrl, 1400, 0.72);
+      const base64 = compressedDataUrl.includes(',') ? compressedDataUrl.split(',')[1] : compressedDataUrl;
       setScanScreenshot(base64);
       await processScan(base64);
     } catch (err) {
