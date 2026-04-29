@@ -81,6 +81,18 @@ describe('extractPartsFromScreenshot', () => {
     });
   });
 
+  describe('extraction prompt', () => {
+    it('instructs the AI to use the longest code when multiple codes appear', async () => {
+      mockFetch(200, { parts: [] });
+
+      await extractPartsFromScreenshot('img');
+
+      const [, init] = vi.mocked(fetch).mock.calls[0];
+      const sentBody = JSON.parse((init as RequestInit).body as string);
+      expect(sentBody.prompt).toContain('when multiple codes appear for the same part, use the longest one');
+    });
+  });
+
   // ── Happy path — direct array responses ───────────────────────────────
 
   describe('direct array response', () => {

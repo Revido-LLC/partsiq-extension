@@ -3,7 +3,7 @@ import { CONFIG } from '@lib/constants';
 const EXTRACTION_PROMPT = `Extract auto parts from this supplier website screenshot.
 Return a JSON array where each object has:
 - name: part name/description
-- oem: part number / artikelnummer (may be in English or Dutch)
+- oem: part number / artikelnummer (may be in English or Dutch) — when multiple codes appear for the same part, use the longest one
 - price: net price as number without currency symbol (prijs), or null
 - delivery_days: delivery time as integer days (levertijd), or null
 - stock: stock quantity as integer (voorraad), or null
