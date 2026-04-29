@@ -1,16 +1,16 @@
-const BUBBLE_VERSION = 'version-test';
+const BUBBLE_ROOT = 'https://app.parts-iq.com';
 
 export const CONFIG = {
-  BUBBLE_BASE_URL: `https://app.parts-iq.com/${BUBBLE_VERSION}`,
-  BUBBLE_ORIGIN: 'https://app.parts-iq.com',
+  BUBBLE_BASE_URL: BUBBLE_ROOT,
+  BUBBLE_ORIGIN: BUBBLE_ROOT,
   BUBBLE_PAGES: {
     login: '/auth/log-in',
     extension: '/extension',
   },
   BUBBLE_API: {
-    AI_EXTRACT: `https://app.parts-iq.com/${BUBBLE_VERSION}/api/1.1/wf/ai_extract`,
-    SAVE_PART: `https://app.parts-iq.com/${BUBBLE_VERSION}/api/1.1/wf/save_part`,
-    REMOVE_PART: `https://app.parts-iq.com/${BUBBLE_VERSION}/api/1.1/wf/remove_part`,
+    AI_EXTRACT: `${BUBBLE_ROOT}/api/1.1/wf/ai_extract`,
+    SAVE_PART: `${BUBBLE_ROOT}/api/1.1/wf/save_part`,
+    REMOVE_PART: `${BUBBLE_ROOT}/api/1.1/wf/remove_part`,
   },
   /** 0-100 for chrome.tabs.captureVisibleTab; divide by 100 for Canvas.convertToBlob */
   SCREENSHOT_QUALITY: 90,
