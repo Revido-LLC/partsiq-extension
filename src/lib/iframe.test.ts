@@ -51,13 +51,13 @@ describe('buildBubbleUrl', () => {
   describe('concrete expected values', () => {
     it('login URL equals the fully resolved string', () => {
       expect(buildBubbleUrl('login')).toBe(
-        'https://app.parts-iq.com/version-138bg/auth/log-in?source=extension',
+        `${CONFIG.BUBBLE_BASE_URL}${CONFIG.BUBBLE_PAGES.login}?source=extension`,
       );
     });
 
     it('extension URL equals the fully resolved string', () => {
       expect(buildBubbleUrl('extension')).toBe(
-        'https://app.parts-iq.com/version-138bg/extension',
+        `${CONFIG.BUBBLE_BASE_URL}${CONFIG.BUBBLE_PAGES.extension}`,
       );
     });
 

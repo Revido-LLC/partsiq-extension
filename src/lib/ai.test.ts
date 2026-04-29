@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import { extractPartsFromScreenshot, AiPart } from './ai';
+import { CONFIG } from '@lib/constants';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const AI_EXTRACT_URL = 'https://app.parts-iq.com/version-138bg/api/1.1/wf/ai_extract';
+const AI_EXTRACT_URL = CONFIG.BUBBLE_API.AI_EXTRACT;
 
 function makePart(overrides: Partial<AiPart> = {}): AiPart {
   return {
