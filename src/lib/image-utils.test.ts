@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
-import { dataUrlToBlob } from './image-utils';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { dataUrlToBlob, compressImage } from './image-utils';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -109,5 +109,95 @@ describe('dataUrlToBlob', () => {
 
       expect(recovered).toEqual(original);
     });
+  });
+});
+
+// ── compressImage ───────────────────────────────────────────────────────────
+
+describe('compressImage', () => {
+  // jsdom has no OffscreenCanvas or createImageBitmap — mock both.
+
+  let mockCtx: { drawImage: ReturnType<typeof vi.fn> };
+  let mockCanvas: {
+    width: number;
+    height: number;
+    getContext: ReturnType<typeof vi.fn>;
+    convertToBlob: ReturnType<typeof vi.fn>;
+  };
+  let mockBitmapClose: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockCtx = { drawImage: vi.fn() };
+    mockCanvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn().mockReturnValue(mockCtx),
+      convertToBlob: vi.fn().mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' })),
+    };
+
+    // Create a spyable constructor function
+    const OffscreenCanvasConstructor = vi.fn(function (w: number, h: number) {
+      mockCanvas.width = w;
+      mockCanvas.height = h;
+      return mockCanvas;
+    });
+
+    vi.stubGlobal('OffscreenCanvas', OffscreenCanvasConstructor);
+
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn().mockImplementation(() => {
+        mockBitmapClose = vi.fn();
+        return Promise.resolve({ width: 2800, height: 2100, close: mockBitmapClose });
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('returns a data URL string starting with data:image/jpeg', async () => {
+    const result = await compressImage(makeDataUrl('image/jpeg', PAYLOAD), 1400, 0.72);
+    expect(result).toMatch(/^data:image\/jpeg;base64,/);
+    expect(mockBitmapClose).toHaveBeenCalledOnce();
+  });
+
+  it('scales down a landscape image so the longest side equals maxSide', async () => {
+    // bitmap: 2800×2100 → scale = 1400/2800 = 0.5 → canvas 1400×1050
+    await compressImage(makeDataUrl('image/jpeg', PAYLOAD), 1400, 0.72);
+    expect(OffscreenCanvas).toHaveBeenCalledWith(1400, 1050);
+    expect(mockCtx.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1400, 1050);
+    expect(mockBitmapClose).toHaveBeenCalledOnce();
+  });
+
+  it('scales down a portrait image so the longest side equals maxSide', async () => {
+    // bitmap: 700×2800 → scale = 1400/2800 = 0.5 → canvas 350×1400
+    (createImageBitmap as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      mockBitmapClose = vi.fn();
+      return Promise.resolve({ width: 700, height: 2800, close: mockBitmapClose });
+    });
+    await compressImage(makeDataUrl('image/jpeg', PAYLOAD), 1400, 0.72);
+    expect(OffscreenCanvas).toHaveBeenCalledWith(350, 1400);
+    expect(mockCtx.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 350, 1400);
+    expect(mockBitmapClose).toHaveBeenCalledOnce();
+  });
+
+  it('does not upscale when image is already smaller than maxSide', async () => {
+    // bitmap: 800×600 → scale = min(1, 1400/800) = 1 → canvas 800×600
+    (createImageBitmap as ReturnType<typeof vi.fn>).mockImplementation(() => {
+      mockBitmapClose = vi.fn();
+      return Promise.resolve({ width: 800, height: 600, close: mockBitmapClose });
+    });
+    await compressImage(makeDataUrl('image/jpeg', PAYLOAD), 1400, 0.72);
+    expect(OffscreenCanvas).toHaveBeenCalledWith(800, 600);
+    expect(mockCtx.drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 800, 600);
+    expect(mockBitmapClose).toHaveBeenCalledOnce();
+  });
+
+  it('passes the quality parameter to convertToBlob', async () => {
+    await compressImage(makeDataUrl('image/jpeg', PAYLOAD), 1400, 0.72);
+    expect(mockCanvas.convertToBlob).toHaveBeenCalledWith({ type: 'image/jpeg', quality: 0.72 });
+    expect(mockBitmapClose).toHaveBeenCalledOnce();
   });
 });
