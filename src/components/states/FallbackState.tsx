@@ -8,9 +8,10 @@ interface Props {
   onAddManual: (item: CartItem) => void;
   onCrop: () => void;
   onScan: () => void;
+  onClear: () => void;
 }
 
-export default function FallbackState({ lang, cart, onAddManual, onCrop, onScan }: Props) {
+export default function FallbackState({ lang, cart, onAddManual, onCrop, onScan, onClear }: Props) {
   const t = useT(lang);
   const [showManualForm, setShowManualForm] = useState(false);
 
@@ -65,6 +66,19 @@ export default function FallbackState({ lang, cart, onAddManual, onCrop, onScan 
             <circle cx="12" cy="13" r="4"/>
           </svg>
           {t.scan}
+        </button>
+        <button
+          onClick={onClear}
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-[#E6E6E6] text-[#525252] text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14H6L5 6"/>
+            <path d="M10 11v6"/>
+            <path d="M14 11v6"/>
+            <path d="M9 6V4h6v2"/>
+          </svg>
+          {t.clear}
         </button>
       </div>
 

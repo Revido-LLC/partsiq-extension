@@ -304,6 +304,16 @@ export default function Sidebar() {
     void startCrop();
   };
 
+  const handleClear = () => {
+    setScanError(null);
+    setScanScreenshot(null);
+    setCartState([]);
+    void setCart([]);
+    setIframeReady(false);
+    setVehicleExpanded(true);
+    setState('idle');
+  };
+
   const handleUpdateCart = async (items: CartItem[]) => {
     setCartState(items);
     await setCart(items);
@@ -439,6 +449,7 @@ export default function Sidebar() {
               setState('cart');
             }}
             onCrop={handleCrop}
+            onClear={handleClear}
           />
         </div>
       )}
