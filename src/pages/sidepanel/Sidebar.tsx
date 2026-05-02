@@ -146,7 +146,8 @@ export default function Sidebar() {
         clearTimeout(loginTimerRef.current);
         loginTimerRef.current = null;
       }
-      const language = (msg.language as Lang) ?? 'en';
+      const rawLang = msg.language as string;
+      const language: Lang = rawLang === 'nl' ? 'nl' : 'en';
       const autoflexConnected = (msg.autoflex_connected as string) === 'yes';
       const mode: WorkMode = autoflexConnected ? 'order' : 'vehicle';
 

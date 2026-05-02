@@ -74,5 +74,5 @@ const T = {
 export type Translations = typeof T.en;
 
 export function useT(lang: Lang): Translations {
-  return T[lang] as unknown as Translations;
+  return (T[lang] ?? T.en) as unknown as Translations;
 }
