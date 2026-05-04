@@ -136,7 +136,7 @@ export default function CartState({
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bubble_part_id: item.bubblePartId }),
+          body: JSON.stringify({ part_id: item.bubblePartId }),
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         await updateItem(item.id, { status: 'pending', checked: false, bubblePartId: undefined });
