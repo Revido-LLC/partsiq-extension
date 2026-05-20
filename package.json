@@ -9,9 +9,11 @@
   },
   "scripts": {
     "build": "vite build --config vite.config.chrome.ts",
+    "build:staging": "vite build --config vite.config.chrome.ts --mode staging",
     "build:chrome": "vite build --config vite.config.chrome.ts",
     "build:firefox": "vite build --config vite.config.firefox.ts",
     "dev": "nodemon --config nodemon.chrome.json",
+    "dev:staging": "vite build --config vite.config.chrome.ts --mode staging --watch",
     "dev:chrome": "nodemon --config nodemon.chrome.json",
     "dev:firefox": "nodemon --config nodemon.firefox.json"
   },

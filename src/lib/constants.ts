@@ -1,8 +1,12 @@
-const BUBBLE_ROOT = 'https://app.parts-iq.com';
+const BUBBLE_ORIGIN = 'https://app.parts-iq.com';
+const BUBBLE_VERSION = import.meta.env.VITE_BUBBLE_VERSION || '';
+const BUBBLE_ROOT = BUBBLE_VERSION
+  ? `${BUBBLE_ORIGIN}/${BUBBLE_VERSION}`
+  : BUBBLE_ORIGIN;
 
 export const CONFIG = {
   BUBBLE_BASE_URL: BUBBLE_ROOT,
-  BUBBLE_ORIGIN: BUBBLE_ROOT,
+  BUBBLE_ORIGIN,
   BUBBLE_PAGES: {
     login: '/auth/log-in',
     extension: '/extension',
