@@ -78,6 +78,17 @@ async function cropScreenshot(
   });
 }
 
+// ── External message handler (Bubble → extension) ──────────────────────────
+
+chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
+  if (msg.type === 'open_sidepanel' && sender.tab?.id) {
+    chrome.sidePanel.open({ tabId: sender.tab.id })
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ error: String(err) }));
+    return true;
+  }
+});
+
 // ── Message handler ──────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {

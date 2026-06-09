@@ -15,6 +15,9 @@
     "https://app.parts-iq.com/*",
     "<all_urls>"
   ],
+  "externally_connectable": {
+    "matches": ["https://app.parts-iq.com/*"]
+  },
   "action": {
     "default_icon": {
       "16": "icon-16.png",
