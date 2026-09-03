@@ -424,6 +424,42 @@ describe('Finish button', () => {
   });
 });
 
+// ── Finish button flushes pending auto-send parts ─────────────────────────────
+
+describe('Finish button — flushes pending auto-send parts', () => {
+  it('sends a checked pending auto-send part immediately on Finish (no 5s wait)', async () => {
+    mockFetchOk({ response: { id: 'bubble-id-1' } });
+    const item = makeItem({ checked: true, autoSend: true, status: 'pending' });
+    const onUpdateCart = vi.fn().mockResolvedValue(undefined);
+    const onFinish = vi.fn();
+    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE, onUpdateCart, onFinish })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+
+    // The part must be POSTed even though the 5s auto-send timer never fired
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        CONFIG.BUBBLE_API.SAVE_PART,
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    // Finish still proceeds after the pending parts are flushed
+    await waitFor(() => expect(onFinish).toHaveBeenCalledOnce());
+  });
+
+  it('does not POST anything on Finish when there are no pending checked parts', async () => {
+    mockFetchOk();
+    const onFinish = vi.fn();
+    render(<CartState {...defaultProps({ cart: [makeItem({ status: 'sent', checked: true })], onFinish })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+
+    expect(onFinish).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
 // ── Crop button ───────────────────────────────────────────────────────────────
 
 describe('Crop button', () => {

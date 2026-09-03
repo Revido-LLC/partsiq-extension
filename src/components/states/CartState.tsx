@@ -206,6 +206,29 @@ export default function CartState({
     await onUpdateCart(cart.filter(i => i.status === 'sent' || i.status === 'sending'));
   };
 
+  // Finishing must not drop parts that are still waiting on their 5s auto-send
+  // timer — flush them to the platform now instead of losing them on unmount.
+  const handleFinish = () => {
+    const pending = cartRef.current.filter(
+      i => i.checked && i.status === 'pending' && i.oem.trim(),
+    );
+    if (pending.length === 0) {
+      onFinish();
+      return;
+    }
+    void (async () => {
+      pending.forEach(i => {
+        const timer = autoSendTimers.current.get(i.id);
+        if (timer !== undefined) {
+          clearTimeout(timer);
+          autoSendTimers.current.delete(i.id);
+        }
+      });
+      await Promise.all(pending.map(i => sendItemRef.current(i)));
+      onFinish();
+    })();
+  };
+
   return (
     <div className="relative flex flex-col h-full bg-[#F0F0F0]">
       {/* Scan actions */}
@@ -408,7 +431,7 @@ export default function CartState({
             {t.clearUnsent}
           </button>
           <button
-            onClick={onFinish}
+            onClick={handleFinish}
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
