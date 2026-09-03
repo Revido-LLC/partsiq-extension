@@ -458,6 +458,42 @@ describe('Finish button — flushes pending auto-send parts', () => {
     expect(onFinish).toHaveBeenCalledOnce();
     expect(fetch).not.toHaveBeenCalled();
   });
+
+  it('does not POST a part twice when Finish is double-clicked', async () => {
+    mockFetchOk();
+    const item = makeItem({ checked: true, autoSend: true, status: 'pending' });
+    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE })} />);
+
+    const btn = screen.getByRole('button', { name: 'Finish search' });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    await new Promise(r => setTimeout(r, 50));
+
+    const saveCalls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([url]: [string]) => url === CONFIG.BUBBLE_API.SAVE_PART,
+    );
+    expect(saveCalls).toHaveLength(1);
+  });
+
+  it('flushes every pending part on Finish', async () => {
+    mockFetchOk();
+    const items = [
+      makeItem({ id: 'a', oem: 'A-1', checked: true, autoSend: true, status: 'pending' }),
+      makeItem({ id: 'b', oem: 'B-2', checked: true, autoSend: true, status: 'pending' }),
+    ];
+    render(<CartState {...defaultProps({ cart: items, vehicle: VEHICLE })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+
+    await waitFor(() => {
+      const saveCalls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([url]: [string]) => url === CONFIG.BUBBLE_API.SAVE_PART,
+      );
+      expect(saveCalls).toHaveLength(2);
+    });
+  });
 });
 
 // ── Crop button ───────────────────────────────────────────────────────────────

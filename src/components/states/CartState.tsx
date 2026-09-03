@@ -28,7 +28,16 @@ export default function CartState({
   const cartRef = useRef(cart);
   cartRef.current = cart;
   const autoSendTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const inFlightIds = useRef<Set<string>>(new Set());
   const sendItemRef = useRef<(item: CartItem) => Promise<void>>(async () => {});
+
+  const clearAutoSendTimer = (id: string) => {
+    const timer = autoSendTimers.current.get(id);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      autoSendTimers.current.delete(id);
+    }
+  };
 
   const updateItem = async (id: string, patch: Partial<CartItem>) => {
     const updated = cartRef.current.map(item => item.id === id ? { ...item, ...patch } : item);
@@ -41,6 +50,10 @@ export default function CartState({
 
   const sendItem = async (item: CartItem) => {
     if (!item.oem.trim()) return;
+    // Guard against the same part being sent twice concurrently (double-click
+    // Finish, or the 5s auto-send timer racing with a manual Finish flush).
+    if (inFlightIds.current.has(item.id)) return;
+    inFlightIds.current.add(item.id);
     await updateItem(item.id, { status: 'sending', autoSend: false });
     try {
       const body: Record<string, unknown> = {
@@ -81,6 +94,8 @@ export default function CartState({
       });
     } catch (err) {
       await updateItem(item.id, { status: 'error', errorMsg: String(err) });
+    } finally {
+      inFlightIds.current.delete(item.id);
     }
   };
 
@@ -101,11 +116,7 @@ export default function CartState({
           autoSendTimers.current.set(item.id, timer);
         }
       } else {
-        const timer = autoSendTimers.current.get(item.id);
-        if (timer !== undefined) {
-          clearTimeout(timer);
-          autoSendTimers.current.delete(item.id);
-        }
+        clearAutoSendTimer(item.id);
       }
     });
   }, [cart]);
@@ -122,8 +133,7 @@ export default function CartState({
 
     // Auto-send pending: uncheck cancels the timer
     if (item.autoSend && item.checked && autoSendTimers.current.has(item.id)) {
-      clearTimeout(autoSendTimers.current.get(item.id)!);
-      autoSendTimers.current.delete(item.id);
+      clearAutoSendTimer(item.id);
       await updateItem(item.id, { checked: false, autoSend: false });
       return;
     }
@@ -196,11 +206,7 @@ export default function CartState({
     setShowClearConfirm(false);
     cart.forEach(i => {
       if (i.status === 'pending' || i.status === 'error') {
-        const timer = autoSendTimers.current.get(i.id);
-        if (timer !== undefined) {
-          clearTimeout(timer);
-          autoSendTimers.current.delete(i.id);
-        }
+        clearAutoSendTimer(i.id);
       }
     });
     await onUpdateCart(cart.filter(i => i.status === 'sent' || i.status === 'sending'));
@@ -217,14 +223,12 @@ export default function CartState({
       return;
     }
     void (async () => {
-      pending.forEach(i => {
-        const timer = autoSendTimers.current.get(i.id);
-        if (timer !== undefined) {
-          clearTimeout(timer);
-          autoSendTimers.current.delete(i.id);
-        }
-      });
-      await Promise.all(pending.map(i => sendItemRef.current(i)));
+      pending.forEach(i => clearAutoSendTimer(i.id));
+      // Sequential so each send sees the cart updated by the previous one
+      // (avoids overlapping whole-cart writes clobbering each other).
+      for (const i of pending) {
+        await sendItemRef.current(i);
+      }
       onFinish();
     })();
   };
