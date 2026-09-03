@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import '@testing-library/jest-dom/vitest';
 import CartState from './CartState';
 import type { CartItem, Vehicle, Order } from '@types/parts';
@@ -421,6 +422,198 @@ describe('Finish button', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
 
     expect(onFinish).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ── Finish button flushes pending auto-send parts ─────────────────────────────
+
+describe('Finish button — flushes pending auto-send parts', () => {
+  it('sends a checked pending auto-send part immediately on Finish (no 5s wait)', async () => {
+    mockFetchOk({ response: { id: 'bubble-id-1' } });
+    const item = makeItem({ checked: true, autoSend: true, status: 'pending' });
+    const onUpdateCart = vi.fn().mockResolvedValue(undefined);
+    const onFinish = vi.fn();
+    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE, onUpdateCart, onFinish })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+
+    // The part must be POSTed even though the 5s auto-send timer never fired
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        CONFIG.BUBBLE_API.SAVE_PART,
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    // Finish still proceeds after the pending parts are flushed
+    await waitFor(() => expect(onFinish).toHaveBeenCalledOnce());
+  });
+
+  it('does not POST anything on Finish when there are no pending checked parts', async () => {
+    mockFetchOk();
+    const onFinish = vi.fn();
+    render(<CartState {...defaultProps({ cart: [makeItem({ status: 'sent', checked: true })], onFinish })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+
+    expect(onFinish).toHaveBeenCalledOnce();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not POST a part twice or finish twice when Finish is double-clicked', async () => {
+    mockFetchOk();
+    const item = makeItem({ checked: true, autoSend: true, status: 'pending' });
+    const onFinish = vi.fn();
+    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE, onFinish })} />);
+
+    const btn = screen.getByRole('button', { name: 'Finish search' });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    await new Promise(r => setTimeout(r, 50));
+
+    const saveCalls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([url]: [string]) => url === CONFIG.BUBBLE_API.SAVE_PART,
+    );
+    expect(saveCalls).toHaveLength(1);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT finish when a pending part fails to send (no silent data loss)', async () => {
+    mockFetchError(500);
+    const item = makeItem({ checked: true, autoSend: true, status: 'pending' });
+    const onFinish = vi.fn();
+    const onUpdateCart = vi.fn().mockResolvedValue(undefined);
+    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE, onFinish, onUpdateCart })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+
+    // Wait until the failed send has recorded an 'error' status
+    await waitFor(() => {
+      const errored = onUpdateCart.mock.calls.some(
+        ([items]: [CartItem[]]) => items.some(i => i.status === 'error'),
+      );
+      expect(errored).toBe(true);
+    });
+    await new Promise(r => setTimeout(r, 30));
+
+    // The part stayed on the cart — Finish did not proceed and wipe it
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('does not finish prematurely when Finish is clicked again mid-flush', async () => {
+    let resolveFetch!: (v: unknown) => void;
+    const fetchP = new Promise(res => { resolveFetch = res as (v: unknown) => void; });
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fetchP));
+
+    const onFinish = vi.fn();
+    function Harness() {
+      const [cart, setCart] = useState<CartItem[]>([
+        makeItem({ checked: true, autoSend: true, status: 'pending' }),
+      ]);
+      return (
+        <CartState
+          {...defaultProps({
+            cart,
+            vehicle: VEHICLE,
+            onFinish,
+            onUpdateCart: async (items: CartItem[]) => { setCart(items); },
+          })}
+        />
+      );
+    }
+    render(<Harness />);
+
+    const btn = screen.getByRole('button', { name: 'Finish search' });
+    fireEvent.click(btn);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    // Second click while the first send is still in flight (part is 'sending')
+    fireEvent.click(btn);
+    await new Promise(r => setTimeout(r, 30));
+    expect(onFinish).not.toHaveBeenCalled();
+
+    // Let the in-flight send resolve — finish proceeds exactly once
+    resolveFetch({ ok: true, status: 200, json: () => Promise.resolve({ response: { id: 'x' } }) });
+    await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not finish while a send is still in flight, and drops nothing if it fails', async () => {
+    let rejectFetch!: (e: unknown) => void;
+    const fetchP = new Promise((_res, rej) => { rejectFetch = rej as (e: unknown) => void; });
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fetchP));
+
+    const onFinish = vi.fn();
+    function Harness() {
+      const [cart, setCart] = useState<CartItem[]>([
+        makeItem({ status: 'pending', checked: false }),
+      ]);
+      return (
+        <CartState
+          {...defaultProps({
+            cart,
+            vehicle: VEHICLE,
+            onFinish,
+            onUpdateCart: async (items: CartItem[]) => { setCart(items); },
+          })}
+        />
+      );
+    }
+    render(<Harness />);
+
+    // Start a send by checking the part — it goes 'sending' with the fetch held open
+    fireEvent.click(screen.getByRole('checkbox'));
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    // Click Finish while that send is still in flight
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+    await new Promise(r => setTimeout(r, 30));
+    expect(onFinish).not.toHaveBeenCalled();
+
+    // The in-flight send fails — Finish must NOT have proceeded and cleared it
+    rejectFetch(new Error('network'));
+    await new Promise(r => setTimeout(r, 30));
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('releases the in-flight guard so a part can be retried after a cart-write failure', async () => {
+    mockFetchOk();
+    const item = makeItem({ status: 'pending', checked: false });
+    const onUpdateCart = vi.fn()
+      .mockRejectedValueOnce(new Error('storage write failed'))
+      .mockResolvedValue(undefined);
+    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE, onUpdateCart })} />);
+
+    // First attempt: the 'sending' cart write rejects
+    fireEvent.click(screen.getByRole('checkbox'));
+    await waitFor(() => expect(onUpdateCart).toHaveBeenCalled());
+    await new Promise(r => setTimeout(r, 30));
+
+    // Retry: the part must not be stranded behind the in-flight guard
+    fireEvent.click(screen.getByRole('checkbox'));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+      CONFIG.BUBBLE_API.SAVE_PART,
+      expect.objectContaining({ method: 'POST' }),
+    ));
+  });
+
+  it('flushes every pending part on Finish', async () => {
+    mockFetchOk();
+    const items = [
+      makeItem({ id: 'a', oem: 'A-1', checked: true, autoSend: true, status: 'pending' }),
+      makeItem({ id: 'b', oem: 'B-2', checked: true, autoSend: true, status: 'pending' }),
+    ];
+    render(<CartState {...defaultProps({ cart: items, vehicle: VEHICLE })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+
+    await waitFor(() => {
+      const saveCalls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([url]: [string]) => url === CONFIG.BUBBLE_API.SAVE_PART,
+      );
+      expect(saveCalls).toHaveLength(2);
+    });
   });
 });
 

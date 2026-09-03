@@ -28,7 +28,17 @@ export default function CartState({
   const cartRef = useRef(cart);
   cartRef.current = cart;
   const autoSendTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const sendItemRef = useRef<(item: CartItem) => Promise<void>>(async () => {});
+  const inFlight = useRef<Map<string, Promise<boolean>>>(new Map());
+  const finishingRef = useRef(false);
+  const sendItemRef = useRef<(item: CartItem) => Promise<boolean>>(async () => false);
+
+  const clearAutoSendTimer = (id: string) => {
+    const timer = autoSendTimers.current.get(id);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      autoSendTimers.current.delete(id);
+    }
+  };
 
   const updateItem = async (id: string, patch: Partial<CartItem>) => {
     const updated = cartRef.current.map(item => item.id === id ? { ...item, ...patch } : item);
@@ -39,10 +49,9 @@ export default function CartState({
     await onUpdateCart(cart.filter(item => item.id !== id));
   };
 
-  const sendItem = async (item: CartItem) => {
-    if (!item.oem.trim()) return;
-    await updateItem(item.id, { status: 'sending', autoSend: false });
+  const performSend = async (item: CartItem): Promise<boolean> => {
     try {
+      await updateItem(item.id, { status: 'sending', autoSend: false });
       const body: Record<string, unknown> = {
         part_name: item.name,
         oem_number: item.oem,
@@ -79,9 +88,25 @@ export default function CartState({
         bubblePartId: data?.response?.id ?? data?.id ?? data?.bubble_part_id,
         errorMsg: undefined,
       });
+      return true;
     } catch (err) {
       await updateItem(item.id, { status: 'error', errorMsg: String(err) });
+      return false;
+    } finally {
+      inFlight.current.delete(item.id);
     }
+  };
+
+  // Send a part, deduping concurrent sends of the same part: a double-click
+  // Finish or the 5s auto-send timer racing a manual flush joins the existing
+  // in-flight send and gets its real success/failure, never a false success.
+  const sendItem = (item: CartItem): Promise<boolean> => {
+    if (!item.oem.trim()) return Promise.resolve(true);
+    const existing = inFlight.current.get(item.id);
+    if (existing) return existing;
+    const promise = performSend(item);
+    inFlight.current.set(item.id, promise);
+    return promise;
   };
 
   sendItemRef.current = sendItem;
@@ -89,7 +114,7 @@ export default function CartState({
   // Auto-send timer: fires 5s after crop auto-check if item remains checked
   useEffect(() => {
     cart.forEach(item => {
-      if (item.autoSend && item.checked && item.status === 'pending') {
+      if (item.autoSend && item.checked && item.status === 'pending' && !finishingRef.current) {
         if (!autoSendTimers.current.has(item.id)) {
           const timer = setTimeout(() => {
             autoSendTimers.current.delete(item.id);
@@ -101,11 +126,7 @@ export default function CartState({
           autoSendTimers.current.set(item.id, timer);
         }
       } else {
-        const timer = autoSendTimers.current.get(item.id);
-        if (timer !== undefined) {
-          clearTimeout(timer);
-          autoSendTimers.current.delete(item.id);
-        }
+        clearAutoSendTimer(item.id);
       }
     });
   }, [cart]);
@@ -122,8 +143,7 @@ export default function CartState({
 
     // Auto-send pending: uncheck cancels the timer
     if (item.autoSend && item.checked && autoSendTimers.current.has(item.id)) {
-      clearTimeout(autoSendTimers.current.get(item.id)!);
-      autoSendTimers.current.delete(item.id);
+      clearAutoSendTimer(item.id);
       await updateItem(item.id, { checked: false, autoSend: false });
       return;
     }
@@ -196,14 +216,61 @@ export default function CartState({
     setShowClearConfirm(false);
     cart.forEach(i => {
       if (i.status === 'pending' || i.status === 'error') {
-        const timer = autoSendTimers.current.get(i.id);
-        if (timer !== undefined) {
-          clearTimeout(timer);
-          autoSendTimers.current.delete(i.id);
-        }
+        clearAutoSendTimer(i.id);
       }
     });
     await onUpdateCart(cart.filter(i => i.status === 'sent' || i.status === 'sending'));
+  };
+
+  // Finishing must not drop parts that are still waiting on their 5s auto-send
+  // timer — flush them to the platform now instead of losing them on unmount.
+  const hasUnsaved = () =>
+    cartRef.current.some(
+      i => i.checked && (i.status === 'pending' || i.status === 'error') && i.oem.trim(),
+    );
+
+  const handleFinish = () => {
+    // Re-entrancy guard first, before any early return, so a click during an
+    // in-progress flush can't slip through and finish early.
+    if (finishingRef.current) return;
+    // Nothing to save AND nothing already sending → finish immediately.
+    if (!hasUnsaved() && inFlight.current.size === 0) {
+      onFinish();
+      return;
+    }
+    finishingRef.current = true;
+    // Stop auto-send timers from firing mid-flush; the effect won't re-arm
+    // them while finishingRef is set.
+    autoSendTimers.current.forEach(t => clearTimeout(t));
+    autoSendTimers.current.clear();
+    void (async () => {
+      try {
+        let allSent = true;
+        // Wait out sends already in flight (a manual check, or the 5s auto-send
+        // timer that beat this click) and honor their real outcome — otherwise
+        // finishing here would clear a 'sending' part that then fails.
+        if (inFlight.current.size > 0) {
+          const results = await Promise.all([...inFlight.current.values()]);
+          if (results.some(ok => !ok)) allSent = false;
+        }
+        // Recompute AFTER draining so a part a timer just sent isn't re-sent.
+        // Sequential so each send sees the cart the previous one updated.
+        const pending = cartRef.current.filter(
+          i => i.checked && (i.status === 'pending' || i.status === 'error') && i.oem.trim(),
+        );
+        for (const i of pending) {
+          const ok = await sendItemRef.current(i);
+          if (!ok) allSent = false;
+        }
+        // Only finish (which clears the cart) once every part is saved, so a
+        // failed send stays visible on the cart instead of being lost.
+        if (allSent) onFinish();
+      } catch {
+        // A send threw unexpectedly — stay on the cart so nothing is dropped.
+      } finally {
+        finishingRef.current = false;
+      }
+    })();
   };
 
   return (
@@ -408,7 +475,7 @@ export default function CartState({
             {t.clearUnsent}
           </button>
           <button
-            onClick={onFinish}
+            onClick={handleFinish}
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
