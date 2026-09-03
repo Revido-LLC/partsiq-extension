@@ -224,26 +224,41 @@ export default function CartState({
 
   // Finishing must not drop parts that are still waiting on their 5s auto-send
   // timer — flush them to the platform now instead of losing them on unmount.
-  const handleFinish = () => {
-    // Re-entrancy guard first — before the empty-pending check — so a click
-    // during an in-progress flush (parts already moved to 'sending', no longer
-    // matching the filter) can't slip through and finish early.
-    if (finishingRef.current) return;
-    const pending = cartRef.current.filter(
+  const hasUnsaved = () =>
+    cartRef.current.some(
       i => i.checked && (i.status === 'pending' || i.status === 'error') && i.oem.trim(),
     );
-    if (pending.length === 0) {
+
+  const handleFinish = () => {
+    // Re-entrancy guard first, before any early return, so a click during an
+    // in-progress flush can't slip through and finish early.
+    if (finishingRef.current) return;
+    // Nothing to save AND nothing already sending → finish immediately.
+    if (!hasUnsaved() && inFlight.current.size === 0) {
       onFinish();
       return;
     }
     finishingRef.current = true;
+    // Stop auto-send timers from firing mid-flush; the effect won't re-arm
+    // them while finishingRef is set.
+    autoSendTimers.current.forEach(t => clearTimeout(t));
+    autoSendTimers.current.clear();
     void (async () => {
       try {
-        // Sequential so each send sees the cart updated by the previous one
-        // (avoids overlapping whole-cart writes clobbering each other).
         let allSent = true;
+        // Wait out sends already in flight (a manual check, or the 5s auto-send
+        // timer that beat this click) and honor their real outcome — otherwise
+        // finishing here would clear a 'sending' part that then fails.
+        if (inFlight.current.size > 0) {
+          const results = await Promise.all([...inFlight.current.values()]);
+          if (results.some(ok => !ok)) allSent = false;
+        }
+        // Recompute AFTER draining so a part a timer just sent isn't re-sent.
+        // Sequential so each send sees the cart the previous one updated.
+        const pending = cartRef.current.filter(
+          i => i.checked && (i.status === 'pending' || i.status === 'error') && i.oem.trim(),
+        );
         for (const i of pending) {
-          clearAutoSendTimer(i.id);
           const ok = await sendItemRef.current(i);
           if (!ok) allSent = false;
         }

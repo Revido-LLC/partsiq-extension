@@ -539,6 +539,44 @@ describe('Finish button — flushes pending auto-send parts', () => {
     await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
   });
 
+  it('does not finish while a send is still in flight, and drops nothing if it fails', async () => {
+    let rejectFetch!: (e: unknown) => void;
+    const fetchP = new Promise((_res, rej) => { rejectFetch = rej as (e: unknown) => void; });
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fetchP));
+
+    const onFinish = vi.fn();
+    function Harness() {
+      const [cart, setCart] = useState<CartItem[]>([
+        makeItem({ status: 'pending', checked: false }),
+      ]);
+      return (
+        <CartState
+          {...defaultProps({
+            cart,
+            vehicle: VEHICLE,
+            onFinish,
+            onUpdateCart: async (items: CartItem[]) => { setCart(items); },
+          })}
+        />
+      );
+    }
+    render(<Harness />);
+
+    // Start a send by checking the part — it goes 'sending' with the fetch held open
+    fireEvent.click(screen.getByRole('checkbox'));
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    // Click Finish while that send is still in flight
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+    await new Promise(r => setTimeout(r, 30));
+    expect(onFinish).not.toHaveBeenCalled();
+
+    // The in-flight send fails — Finish must NOT have proceeded and cleared it
+    rejectFetch(new Error('network'));
+    await new Promise(r => setTimeout(r, 30));
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
   it('releases the in-flight guard so a part can be retried after a cart-write failure', async () => {
     mockFetchOk();
     const item = makeItem({ status: 'pending', checked: false });
