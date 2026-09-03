@@ -28,7 +28,7 @@ export default function CartState({
   const cartRef = useRef(cart);
   cartRef.current = cart;
   const autoSendTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const inFlightIds = useRef<Set<string>>(new Set());
+  const inFlight = useRef<Map<string, Promise<boolean>>>(new Map());
   const finishingRef = useRef(false);
   const sendItemRef = useRef<(item: CartItem) => Promise<boolean>>(async () => false);
 
@@ -49,13 +49,7 @@ export default function CartState({
     await onUpdateCart(cart.filter(item => item.id !== id));
   };
 
-  const sendItem = async (item: CartItem): Promise<boolean> => {
-    if (!item.oem.trim()) return true;
-    // Guard against the same part being sent twice concurrently (double-click
-    // Finish, or the 5s auto-send timer racing with a manual Finish flush).
-    // A part already in flight is being sent elsewhere — treat as OK.
-    if (inFlightIds.current.has(item.id)) return true;
-    inFlightIds.current.add(item.id);
+  const performSend = async (item: CartItem): Promise<boolean> => {
     try {
       await updateItem(item.id, { status: 'sending', autoSend: false });
       const body: Record<string, unknown> = {
@@ -99,8 +93,20 @@ export default function CartState({
       await updateItem(item.id, { status: 'error', errorMsg: String(err) });
       return false;
     } finally {
-      inFlightIds.current.delete(item.id);
+      inFlight.current.delete(item.id);
     }
+  };
+
+  // Send a part, deduping concurrent sends of the same part: a double-click
+  // Finish or the 5s auto-send timer racing a manual flush joins the existing
+  // in-flight send and gets its real success/failure, never a false success.
+  const sendItem = (item: CartItem): Promise<boolean> => {
+    if (!item.oem.trim()) return Promise.resolve(true);
+    const existing = inFlight.current.get(item.id);
+    if (existing) return existing;
+    const promise = performSend(item);
+    inFlight.current.set(item.id, promise);
+    return promise;
   };
 
   sendItemRef.current = sendItem;
@@ -108,7 +114,7 @@ export default function CartState({
   // Auto-send timer: fires 5s after crop auto-check if item remains checked
   useEffect(() => {
     cart.forEach(item => {
-      if (item.autoSend && item.checked && item.status === 'pending') {
+      if (item.autoSend && item.checked && item.status === 'pending' && !finishingRef.current) {
         if (!autoSendTimers.current.has(item.id)) {
           const timer = setTimeout(() => {
             autoSendTimers.current.delete(item.id);
@@ -219,6 +225,10 @@ export default function CartState({
   // Finishing must not drop parts that are still waiting on their 5s auto-send
   // timer — flush them to the platform now instead of losing them on unmount.
   const handleFinish = () => {
+    // Re-entrancy guard first — before the empty-pending check — so a click
+    // during an in-progress flush (parts already moved to 'sending', no longer
+    // matching the filter) can't slip through and finish early.
+    if (finishingRef.current) return;
     const pending = cartRef.current.filter(
       i => i.checked && (i.status === 'pending' || i.status === 'error') && i.oem.trim(),
     );
@@ -226,7 +236,6 @@ export default function CartState({
       onFinish();
       return;
     }
-    if (finishingRef.current) return;
     finishingRef.current = true;
     void (async () => {
       try {

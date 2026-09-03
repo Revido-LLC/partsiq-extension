@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { useState } from 'react';
 import '@testing-library/jest-dom/vitest';
 import CartState from './CartState';
 import type { CartItem, Vehicle, Order } from '@types/parts';
@@ -499,6 +500,43 @@ describe('Finish button — flushes pending auto-send parts', () => {
 
     // The part stayed on the cart — Finish did not proceed and wipe it
     expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('does not finish prematurely when Finish is clicked again mid-flush', async () => {
+    let resolveFetch!: (v: unknown) => void;
+    const fetchP = new Promise(res => { resolveFetch = res as (v: unknown) => void; });
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(fetchP));
+
+    const onFinish = vi.fn();
+    function Harness() {
+      const [cart, setCart] = useState<CartItem[]>([
+        makeItem({ checked: true, autoSend: true, status: 'pending' }),
+      ]);
+      return (
+        <CartState
+          {...defaultProps({
+            cart,
+            vehicle: VEHICLE,
+            onFinish,
+            onUpdateCart: async (items: CartItem[]) => { setCart(items); },
+          })}
+        />
+      );
+    }
+    render(<Harness />);
+
+    const btn = screen.getByRole('button', { name: 'Finish search' });
+    fireEvent.click(btn);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+
+    // Second click while the first send is still in flight (part is 'sending')
+    fireEvent.click(btn);
+    await new Promise(r => setTimeout(r, 30));
+    expect(onFinish).not.toHaveBeenCalled();
+
+    // Let the in-flight send resolve — finish proceeds exactly once
+    resolveFetch({ ok: true, status: 200, json: () => Promise.resolve({ response: { id: 'x' } }) });
+    await waitFor(() => expect(onFinish).toHaveBeenCalledTimes(1));
   });
 
   it('releases the in-flight guard so a part can be retried after a cart-write failure', async () => {
