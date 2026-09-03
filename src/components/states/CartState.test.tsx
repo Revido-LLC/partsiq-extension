@@ -459,22 +459,67 @@ describe('Finish button — flushes pending auto-send parts', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('does not POST a part twice when Finish is double-clicked', async () => {
+  it('does not POST a part twice or finish twice when Finish is double-clicked', async () => {
     mockFetchOk();
     const item = makeItem({ checked: true, autoSend: true, status: 'pending' });
-    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE })} />);
+    const onFinish = vi.fn();
+    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE, onFinish })} />);
 
     const btn = screen.getByRole('button', { name: 'Finish search' });
     fireEvent.click(btn);
     fireEvent.click(btn);
 
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
     await new Promise(r => setTimeout(r, 50));
 
     const saveCalls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
       ([url]: [string]) => url === CONFIG.BUBBLE_API.SAVE_PART,
     );
     expect(saveCalls).toHaveLength(1);
+    expect(onFinish).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT finish when a pending part fails to send (no silent data loss)', async () => {
+    mockFetchError(500);
+    const item = makeItem({ checked: true, autoSend: true, status: 'pending' });
+    const onFinish = vi.fn();
+    const onUpdateCart = vi.fn().mockResolvedValue(undefined);
+    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE, onFinish, onUpdateCart })} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish search' }));
+
+    // Wait until the failed send has recorded an 'error' status
+    await waitFor(() => {
+      const errored = onUpdateCart.mock.calls.some(
+        ([items]: [CartItem[]]) => items.some(i => i.status === 'error'),
+      );
+      expect(errored).toBe(true);
+    });
+    await new Promise(r => setTimeout(r, 30));
+
+    // The part stayed on the cart — Finish did not proceed and wipe it
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('releases the in-flight guard so a part can be retried after a cart-write failure', async () => {
+    mockFetchOk();
+    const item = makeItem({ status: 'pending', checked: false });
+    const onUpdateCart = vi.fn()
+      .mockRejectedValueOnce(new Error('storage write failed'))
+      .mockResolvedValue(undefined);
+    render(<CartState {...defaultProps({ cart: [item], vehicle: VEHICLE, onUpdateCart })} />);
+
+    // First attempt: the 'sending' cart write rejects
+    fireEvent.click(screen.getByRole('checkbox'));
+    await waitFor(() => expect(onUpdateCart).toHaveBeenCalled());
+    await new Promise(r => setTimeout(r, 30));
+
+    // Retry: the part must not be stranded behind the in-flight guard
+    fireEvent.click(screen.getByRole('checkbox'));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+      CONFIG.BUBBLE_API.SAVE_PART,
+      expect.objectContaining({ method: 'POST' }),
+    ));
   });
 
   it('flushes every pending part on Finish', async () => {
