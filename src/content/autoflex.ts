@@ -51,11 +51,13 @@ function showBanner(nr: string): void {
     const shadow = host.attachShadow({ mode: 'closed' });
     iframe = document.createElement('iframe');
     iframe.title = 'Parts iQ';
-    iframe.style.cssText = `display:block;width:100%;height:${DEFAULT_HEIGHT}px;border:0;background:transparent;`;
+    iframe.style.cssText = 'display:block;width:100%;height:0;border:0;background:transparent;';
     shadow.appendChild(iframe);
     document.documentElement.appendChild(host);
-    setHeight(DEFAULT_HEIGHT);
   }
+  // Stay invisible until the Bubble page confirms it loaded (partsiq:banner_ready):
+  // a missing page (404 before the Bubble release) or an outage never shows up.
+  setHeight(0);
   iframe!.src = bannerUrl(nr);
 }
 
@@ -74,6 +76,9 @@ window.addEventListener('message', (event) => {
   if (event.origin !== CONFIG.BUBBLE_ORIGIN || !iframe || event.source !== iframe.contentWindow) return;
   const data = event.data as { type?: string; count?: number; height?: number; workOrderId?: string } | null;
   switch (data?.type) {
+    case 'partsiq:banner_ready':
+      setHeight(DEFAULT_HEIGHT);
+      break;
     case 'partsiq:banner_wo':
       if (currentNr && typeof data.workOrderId === 'string' && data.workOrderId) sendWorkOrder(data.workOrderId);
       break;

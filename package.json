@@ -1,6 +1,6 @@
 {
   "name": "partsiq-extension",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "A simple chrome & firefox extension template with Vite, React, TypeScript and Tailwind CSS.",
   "license": "MIT",
   "repository": {
@@ -10,6 +10,7 @@
   "scripts": {
     "build": "vite build --config vite.config.chrome.ts",
     "build:staging": "vite build --config vite.config.chrome.ts --mode staging",
+    "build:teste": "vite build --config vite.config.chrome-teste.ts --mode staging",
     "build:chrome": "vite build --config vite.config.chrome.ts",
     "build:firefox": "vite build --config vite.config.firefox.ts",
     "dev": "nodemon --config nodemon.chrome.json",
