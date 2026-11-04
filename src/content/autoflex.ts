@@ -1,4 +1,4 @@
-// Content script for Autoflex (autoflex10.work / autoflex10.nl):
+// Content script for Autoflex (autoflex10.eu production, autoflex10.work test):
 // detects the open work order (by its order number in the page header — the Servoy
 // app never changes the URL), shows the Parts iQ banner (Bubble page in an iframe,
 // isolated in a Shadow DOM) and relays banner messages to the background.
@@ -6,13 +6,25 @@
 import { CONFIG } from '@lib/constants';
 import { findOpenOrderNumber } from '@lib/autoflex';
 
-const DEFAULT_HEIGHT = 56;
+const DEFAULT_HEIGHT = 48;
 const HIDDEN_KEY = (nr: string) => `partsiq_banner_hidden_${nr}`;
 
 let currentNr: string | null = null;
 let host: HTMLDivElement | null = null;
 let iframe: HTMLIFrameElement | null = null;
-let originalPaddingTop: string | null = null;
+let bannerHeight = 0;
+
+// Servoy lays the whole app out in #mainForm (position:absolute; inset:0), so body
+// padding does not move it: shift that container down instead (body as fallback).
+function applyOffset(h: number): void {
+  const main = document.getElementById('mainForm');
+  if (main) {
+    main.style.top = h ? `${h}px` : '';
+    document.body.style.paddingTop = '';
+  } else {
+    document.body.style.paddingTop = h ? `${h}px` : '';
+  }
+}
 
 function bannerUrl(nr: string): string {
   const query = new URLSearchParams({ nr, ext: chrome.runtime.id });
@@ -27,17 +39,17 @@ function setHeight(height: number): void {
   if (!host || !iframe) return;
   const h = Math.max(0, Math.min(height, 200));
   iframe.style.height = `${h}px`;
-  if (originalPaddingTop === null) originalPaddingTop = document.body.style.paddingTop;
-  document.body.style.paddingTop = `${h}px`;
+  bannerHeight = h;
+  applyOffset(h);
 }
 
 function removeBanner(): void {
   host?.remove();
   host = null;
   iframe = null;
-  if (originalPaddingTop !== null) {
-    document.body.style.paddingTop = originalPaddingTop;
-    originalPaddingTop = null;
+  if (bannerHeight) {
+    bannerHeight = 0;
+    applyOffset(0);
   }
 }
 
@@ -60,6 +72,7 @@ function showBanner(nr: string): void {
 
 function check(): void {
   const nr = findOpenOrderNumber();
+  if (host && bannerHeight) applyOffset(bannerHeight); // Servoy may re-render #mainForm
   if (nr === currentNr) return;
   currentNr = nr;
   // The GUID arrives later from the banner (partsiq:banner_wo); clear the old one now.

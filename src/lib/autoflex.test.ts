@@ -6,6 +6,8 @@ describe('isAutoflexUrl', () => {
     expect(isAutoflexUrl('https://evo.autoflex10.work/autoflex/solution/autoflex_cloud/index.html#svy_nav_fr_p_main_autoflex')).toBe(true);
     expect(isAutoflexUrl('https://app.autoflex10.nl/werkorders')).toBe(true);
     expect(isAutoflexUrl('https://autoflex10.nl/')).toBe(true);
+    expect(isAutoflexUrl('https://autoflex10.eu/')).toBe(true);
+    expect(isAutoflexUrl('https://app.autoflex10.eu/autoflex/solution/autoflex_cloud/index.html')).toBe(true);
   });
   it('rejects other hosts and invalid input', () => {
     expect(isAutoflexUrl('https://app.parts-iq.com/x')).toBe(false);

@@ -3,8 +3,8 @@
 // opened, so the order number is read from the work order header in the page
 // ("20240018 | 98-ZPZ-7 | HYUNDAI I 10"). The Bubble banner resolves it to the GUID.
 
-/** Domains Autoflex runs on: autoflex10.work (test, evo.) and autoflex10.nl (production). */
-export const AUTOFLEX_DOMAINS = ['autoflex10.work', 'autoflex10.nl'];
+/** Domains Autoflex runs on: autoflex10.eu (production), autoflex10.work (test, evo.), autoflex10.nl. */
+export const AUTOFLEX_DOMAINS = ['autoflex10.eu', 'autoflex10.work', 'autoflex10.nl'];
 
 /** Servoy form that holds an open work order, and its title label. */
 export const WORK_ORDER_FORM = 'orders_dtl';
