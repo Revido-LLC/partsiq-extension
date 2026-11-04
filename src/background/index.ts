@@ -82,17 +82,87 @@ async function cropScreenshot(
 
 chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'open_sidepanel' && sender.tab?.id) {
-    chrome.sidePanel.open({ tabId: sender.tab.id })
+    const tabId = sender.tab.id;
+    // open() must run first, synchronously inside the user gesture
+    const opening = chrome.sidePanel.open({ tabId });
+    const workOrderId = typeof msg.workOrderId === 'string' ? msg.workOrderId : null;
+    if (workOrderId) {
+      void setTabWorkOrder(tabId, workOrderId).then(() =>
+        broadcastWorkOrder(workOrderId, msg.search === true),
+      );
+    }
+    opening
       .then(() => sendResponse({ ok: true }))
       .catch((err) => sendResponse({ error: String(err) }));
     return true;
   }
 });
 
+// ── Autoflex work order per tab ─────────────────────────────────────────────
+
+async function getTabWorkOrders(): Promise<Record<string, string>> {
+  const key = CONFIG.STORAGE_KEYS.TAB_WORK_ORDERS;
+  const data = await chrome.storage.session.get(key);
+  return (data[key] as Record<string, string> | undefined) ?? {};
+}
+
+async function setTabWorkOrder(tabId: number, workOrderId: string | null): Promise<void> {
+  const map = await getTabWorkOrders();
+  if (workOrderId) map[String(tabId)] = workOrderId;
+  else delete map[String(tabId)];
+  await chrome.storage.session.set({ [CONFIG.STORAGE_KEYS.TAB_WORK_ORDERS]: map });
+}
+
+function broadcastWorkOrder(workOrderId: string | null, search = false): void {
+  chrome.runtime
+    .sendMessage({ type: 'work_order_active', workOrderId, search })
+    .catch(() => {/* side panel not open */});
+}
+
+async function activeTabId(): Promise<number | undefined> {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  return tab?.id;
+}
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  void getTabWorkOrders().then(map => broadcastWorkOrder(map[String(tabId)] ?? null));
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void setTabWorkOrder(tabId, null);
+});
+
 // ── Message handler ──────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
+    case 'autoflex_work_order':
+      (async () => {
+        const tabId = sender.tab?.id;
+        if (!tabId) return;
+        const workOrderId = typeof msg.workOrderId === 'string' ? msg.workOrderId : null;
+        await setTabWorkOrder(tabId, workOrderId);
+        if (!workOrderId) await chrome.action.setBadgeText({ tabId, text: '' });
+        if ((await activeTabId()) === tabId) broadcastWorkOrder(workOrderId);
+      })();
+      return false;
+
+    case 'autoflex_badge':
+      if (sender.tab?.id) {
+        const count = Number(msg.count) || 0;
+        void chrome.action.setBadgeBackgroundColor({ tabId: sender.tab.id, color: '#00C6B2' });
+        void chrome.action.setBadgeText({ tabId: sender.tab.id, text: count > 0 ? String(count) : '' });
+      }
+      return false;
+
+    case 'get_active_work_order':
+      (async () => {
+        const tabId = await activeTabId();
+        const map = await getTabWorkOrders();
+        sendResponse({ workOrderId: tabId ? map[String(tabId)] ?? null : null });
+      })();
+      return true;
+
     case 'take_screenshot':
       (async () => {
         try {

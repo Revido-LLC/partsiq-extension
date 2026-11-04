@@ -32,6 +32,8 @@ const T = {
     errorLabel: 'Error',
     loginError: 'Login failed. Please try again.',
     scanError: 'Scan failed.',
+    scanSupplierPage: 'Scan a supplier page instead',
+    backToWorkOrder: 'Back to work order',
     removeUnsentConfirm: (count: number) =>
       `Remove ${count} unsent part${count === 1 ? '' : 's'}?`,
   },
@@ -66,6 +68,8 @@ const T = {
     errorLabel: 'Fout',
     loginError: 'Aanmelden mislukt. Probeer opnieuw.',
     scanError: 'Scannen mislukt.',
+    scanSupplierPage: 'Liever een leverancierspagina scannen',
+    backToWorkOrder: 'Terug naar werkorder',
     removeUnsentConfirm: (count: number) =>
       `${count} niet-verzonden onderdeel${count === 1 ? '' : 'en'} verwijderen?`,
   },

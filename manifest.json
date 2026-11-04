@@ -39,6 +39,11 @@
       "run_at": "document_idle"
     },
     {
+      "matches": ["https://app.autoflex10.nl/*"],
+      "js": ["src/content/autoflex.ts"],
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["https://app.parts-iq.com/*"],
       "js": ["src/content/hide-ybug.ts"],
       "run_at": "document_start",

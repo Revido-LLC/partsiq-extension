@@ -10,6 +10,8 @@ export const CONFIG = {
   BUBBLE_PAGES: {
     login: '/auth/log-in',
     extension: '/extension',
+    autoflexPanel: '/autoflex-panel',
+    autoflexBanner: '/autoflex-banner',
   },
   BUBBLE_API: {
     AI_EXTRACT: `${BUBBLE_ROOT}/api/1.1/wf/ai_extract`,
@@ -28,5 +30,7 @@ export const CONFIG = {
     CART: 'partsiq_cart',
     CART_DATE: 'partsiq_cart_date',
     AUTOFLEX: 'partsiq_autoflex',
+    /** chrome.storage.session: Record<tabId, workOrderId> */
+    TAB_WORK_ORDERS: 'partsiq_tab_work_orders',
   },
 } as const;

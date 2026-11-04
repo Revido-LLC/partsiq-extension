@@ -10,6 +10,7 @@ import {
   getCart, setCart,
 } from '@lib/storage';
 import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
+import { useT } from '@lib/i18n';
 import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
@@ -38,6 +39,11 @@ export default function Sidebar() {
   const [iframeReady, setIframeReady] = useState(false);
   const [finishOrder, setFinishOrder] = useState<Order | null>(null);
   const [loginOverlay, setLoginOverlay] = useState(true);
+  // Autoflex work order open in the active tab (drives the autoflex-panel iframe)
+  const [activeWo, setActiveWo] = useState<string | null>(null);
+  const [woSearch, setWoSearch] = useState(false);
+  const [woPanelHidden, setWoPanelHidden] = useState(false);
+  const t = useT(lang);
   const loginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs to avoid stale closures in event listeners
@@ -105,7 +111,16 @@ export default function Sidebar() {
 
   // ── chrome.runtime message listener ───────────────────────────────────────
   useEffect(() => {
-    const handler = (msg: { type: string; url?: string; imageBase64?: string; error?: string }) => {
+    const handler = (msg: {
+      type: string; url?: string; imageBase64?: string; error?: string;
+      workOrderId?: string | null; search?: boolean;
+    }) => {
+      if (msg.type === 'work_order_active') {
+        setActiveWo(msg.workOrderId ?? null);
+        setWoSearch(msg.search === true);
+        if (msg.workOrderId) setWoPanelHidden(false);
+        return;
+      }
       if (msg.type === 'crop_ready') {
         if (msg.error) {
           setScanError(msg.error);
@@ -131,6 +146,10 @@ export default function Sidebar() {
     };
 
     chrome.runtime.onMessage.addListener(handler);
+    chrome.runtime
+      .sendMessage({ type: 'get_active_work_order' })
+      .then((res: { workOrderId?: string | null } | undefined) => setActiveWo(res?.workOrderId ?? null))
+      .catch(() => {/* background not ready */});
     return () => chrome.runtime.onMessage.removeListener(handler);
   }, []);
 
@@ -362,6 +381,27 @@ export default function Sidebar() {
     );
   }
 
+  // Autoflex work order open in the active tab: show the Parts iQ panel for it
+  if (activeWo && !woPanelHidden) {
+    return (
+      <div className="flex flex-col h-screen bg-[#F0F0F0]">
+        <BubbleIframe
+          key={activeWo}
+          src={buildBubbleUrl('autoflexPanel', { wo: activeWo, search: woSearch ? '1' : undefined })}
+          title="Parts iQ – Autoflex"
+          className="flex-1 w-full"
+        />
+        <button
+          type="button"
+          onClick={() => setWoPanelHidden(true)}
+          className="m-2 rounded-full text-xs font-semibold text-[#473150] bg-white py-2"
+        >
+          {t.scanSupplierPage}
+        </button>
+      </div>
+    );
+  }
+
   if (state === 'finish') {
     return <FinishState lang={lang} workMode={workMode} order={finishOrder} onNewQuote={handleNewQuote} />;
   }
@@ -413,6 +453,15 @@ export default function Sidebar() {
 
   return (
     <div className="flex flex-col h-screen bg-[#F0F0F0]">
+      {activeWo && (
+        <button
+          type="button"
+          onClick={() => setWoPanelHidden(false)}
+          className="m-2 rounded-full text-xs font-semibold text-[#473150] bg-[#00C6B2] py-2"
+        >
+          {t.backToWorkOrder}
+        </button>
+      )}
       {!vehicleExpanded && panelHeader}
 
       {state === 'scanning' && (
