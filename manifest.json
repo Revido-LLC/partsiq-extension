@@ -39,7 +39,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://app.autoflex10.nl/*"],
+      "matches": ["https://*.autoflex10.work/*", "https://*.autoflex10.nl/*"],
       "js": ["src/content/autoflex.ts"],
       "run_at": "document_idle"
     },

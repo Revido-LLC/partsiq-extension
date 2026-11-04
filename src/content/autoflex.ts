@@ -1,20 +1,26 @@
-// Content script for app.autoflex10.nl:
-// detects the open work order, shows the Parts iQ banner (Bubble page in an iframe,
+// Content script for Autoflex (autoflex10.work / autoflex10.nl):
+// detects the open work order (by its order number in the page header — the Servoy
+// app never changes the URL), shows the Parts iQ banner (Bubble page in an iframe,
 // isolated in a Shadow DOM) and relays banner messages to the background.
+// The banner resolves the order number to the Autoflex GUID and posts it back.
 import { CONFIG } from '@lib/constants';
-import { parseWorkOrderId } from '@lib/autoflex';
+import { findOpenOrderNumber } from '@lib/autoflex';
 
 const DEFAULT_HEIGHT = 56;
-const HIDDEN_KEY = (wo: string) => `partsiq_banner_hidden_${wo}`;
+const HIDDEN_KEY = (nr: string) => `partsiq_banner_hidden_${nr}`;
 
-let currentWo: string | null = null;
+let currentNr: string | null = null;
 let host: HTMLDivElement | null = null;
 let iframe: HTMLIFrameElement | null = null;
 let originalPaddingTop: string | null = null;
 
-function bannerUrl(wo: string): string {
-  const query = new URLSearchParams({ wo, ext: chrome.runtime.id });
+function bannerUrl(nr: string): string {
+  const query = new URLSearchParams({ nr, ext: chrome.runtime.id });
   return `${CONFIG.BUBBLE_BASE_URL}${CONFIG.BUBBLE_PAGES.autoflexBanner}?${query}`;
+}
+
+function sendWorkOrder(workOrderId: string | null): void {
+  chrome.runtime.sendMessage({ type: 'autoflex_work_order', workOrderId }).catch(() => {});
 }
 
 function setHeight(height: number): void {
@@ -35,8 +41,8 @@ function removeBanner(): void {
   }
 }
 
-function showBanner(wo: string): void {
-  if (sessionStorage.getItem(HIDDEN_KEY(wo))) return;
+function showBanner(nr: string): void {
+  if (sessionStorage.getItem(HIDDEN_KEY(nr))) return;
   if (!host) {
     host = document.createElement('div');
     host.id = 'partsiq-banner-host';
@@ -49,24 +55,28 @@ function showBanner(wo: string): void {
     document.documentElement.appendChild(host);
     setHeight(DEFAULT_HEIGHT);
   }
-  iframe!.src = bannerUrl(wo);
+  iframe!.src = bannerUrl(nr);
 }
 
 function check(): void {
-  const wo = parseWorkOrderId(location.href);
-  if (wo === currentWo) return;
-  currentWo = wo;
-  chrome.runtime.sendMessage({ type: 'autoflex_work_order', workOrderId: wo }).catch(() => {});
-  if (wo) showBanner(wo);
+  const nr = findOpenOrderNumber();
+  if (nr === currentNr) return;
+  currentNr = nr;
+  // The GUID arrives later from the banner (partsiq:banner_wo); clear the old one now.
+  sendWorkOrder(null);
+  if (nr) showBanner(nr);
   else removeBanner();
 }
 
 window.addEventListener('message', (event) => {
   if (event.origin !== CONFIG.BUBBLE_ORIGIN || !iframe || event.source !== iframe.contentWindow) return;
-  const data = event.data as { type?: string; count?: number; height?: number } | null;
+  const data = event.data as { type?: string; count?: number; height?: number; workOrderId?: string } | null;
   switch (data?.type) {
+    case 'partsiq:banner_wo':
+      if (currentNr && typeof data.workOrderId === 'string' && data.workOrderId) sendWorkOrder(data.workOrderId);
+      break;
     case 'partsiq:banner_hide':
-      if (currentWo) sessionStorage.setItem(HIDDEN_KEY(currentWo), '1');
+      if (currentNr) sessionStorage.setItem(HIDDEN_KEY(currentNr), '1');
       removeBanner();
       break;
     case 'partsiq:banner_count':
@@ -78,9 +88,12 @@ window.addEventListener('message', (event) => {
   }
 });
 
-// SPA navigation: Navigation API when available, plus a light poll as fallback.
-const nav = (window as unknown as { navigation?: EventTarget }).navigation;
-nav?.addEventListener('navigatesuccess', check);
-window.addEventListener('popstate', check);
-setInterval(check, 1000);
+// Servoy swaps forms without navigating: watch the DOM (debounced) plus a light poll.
+let pending = false;
+new MutationObserver(() => {
+  if (pending) return;
+  pending = true;
+  setTimeout(() => { pending = false; check(); }, 300);
+}).observe(document.body, { childList: true, subtree: true, characterData: true });
+setInterval(check, 1500);
 check();
