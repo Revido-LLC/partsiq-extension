@@ -4,7 +4,7 @@
 // isolated in a Shadow DOM) and relays banner messages to the background.
 // The banner resolves the order number to the Autoflex GUID and posts it back.
 import { CONFIG } from '@lib/constants';
-import { findOpenOrderNumber } from '@lib/autoflex';
+import { findOpenOrderNumber, createPageOffsetter } from '@lib/autoflex';
 
 const DEFAULT_HEIGHT = 48;
 const HIDDEN_KEY = (nr: string) => `partsiq_banner_hidden_${nr}`;
@@ -13,18 +13,7 @@ let currentNr: string | null = null;
 let host: HTMLDivElement | null = null;
 let iframe: HTMLIFrameElement | null = null;
 let bannerHeight = 0;
-
-// Servoy lays the whole app out in #mainForm (position:absolute; inset:0), so body
-// padding does not move it: shift that container down instead (body as fallback).
-function applyOffset(h: number): void {
-  const main = document.getElementById('mainForm');
-  if (main) {
-    main.style.top = h ? `${h}px` : '';
-    document.body.style.paddingTop = '';
-  } else {
-    document.body.style.paddingTop = h ? `${h}px` : '';
-  }
-}
+const applyOffset = createPageOffsetter(document);
 
 function bannerUrl(nr: string): string {
   const query = new URLSearchParams({ nr, ext: chrome.runtime.id });

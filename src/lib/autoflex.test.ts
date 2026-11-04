@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, findOpenOrderNumber } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, findOpenOrderNumber, createPageOffsetter } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -56,5 +56,35 @@ describe('findOpenOrderNumber', () => {
   it('returns null on the work order list', () => {
     const doc = page('<svy-form name="orders_tbl"><span>20240018</span></svy-form>');
     expect(findOpenOrderNumber(doc, visible)).toBeNull();
+  });
+});
+
+describe('createPageOffsetter', () => {
+  it('shifts #mainForm down and restores top:0 (never top:auto)', () => {
+    const doc = page('<div id="mainForm" style="position:absolute; inset:0px;"></div>');
+    const main = doc.getElementById('mainForm')!;
+    const offset = createPageOffsetter(doc);
+    offset(48);
+    expect(main.style.top).toBe('48px');
+    offset(0);
+    expect(main.style.top).toBe('0px');
+  });
+  it('can be applied repeatedly and still restores the original value', () => {
+    const doc = page('<div id="mainForm" style="position:absolute; top:10px;"></div>');
+    const main = doc.getElementById('mainForm')!;
+    const offset = createPageOffsetter(doc);
+    offset(48);
+    offset(48);
+    offset(0);
+    expect(main.style.top).toBe('10px');
+  });
+  it('falls back to body padding when there is no #mainForm', () => {
+    const doc = page('<p>x</p>');
+    doc.body.style.paddingTop = '5px';
+    const offset = createPageOffsetter(doc);
+    offset(48);
+    expect(doc.body.style.paddingTop).toBe('48px');
+    offset(0);
+    expect(doc.body.style.paddingTop).toBe('5px');
   });
 });

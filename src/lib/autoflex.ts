@@ -42,3 +42,27 @@ export function findOpenOrderNumber(
   }
   return null;
 }
+
+/**
+ * Returns a function that pushes the Autoflex page down by `h` px (0 = restore).
+ * Servoy lays the whole app out in #mainForm (position:absolute; inset:0), so body
+ * padding does not move it: shift that container instead (body padding as fallback).
+ * Restoring puts back the exact original value — clearing `top` would turn
+ * `inset:0` into `top:auto` and push the whole app off screen.
+ */
+export function createPageOffsetter(doc: Document): (h: number) => void {
+  let originalMainTop: string | null = null;
+  let originalBodyPadding: string | null = null;
+  return (h: number) => {
+    const main = doc.getElementById('mainForm');
+    if (main) {
+      if (originalMainTop === null) originalMainTop = main.style.top || '0px';
+      main.style.top = h ? `${h}px` : originalMainTop;
+      if (!h) originalMainTop = null;
+    } else {
+      if (originalBodyPadding === null) originalBodyPadding = doc.body.style.paddingTop;
+      doc.body.style.paddingTop = h ? `${h}px` : originalBodyPadding;
+      if (!h) originalBodyPadding = null;
+    }
+  };
+}
