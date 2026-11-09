@@ -1,5 +1,6 @@
 import { CONFIG } from '@lib/constants';
 import { dataUrlToBlob } from '@lib/image-utils';
+import { canCropOn } from '@lib/crop';
 
 // Open sidebar when extension icon is clicked
 chrome.sidePanel
@@ -124,8 +125,66 @@ async function activeTabId(): Promise<number | undefined> {
   return tab?.id;
 }
 
+// ── Crop follows the active tab ─────────────────────────────────────────────
+// After "Crop" the user may switch tabs: the overlay moves to the active supplier tab until
+// an area is selected or Esc cancels. Autoflex tabs are skipped so the work order stays usable.
+
+const CROP_ARMED_KEY = 'partsiq_crop_armed';
+/** shown: the overlay (with its first-time hint) already appeared in some tab */
+interface CropArmed { lang: string; tabId: number; shown: boolean }
+
+async function getCropArmed(): Promise<CropArmed | null> {
+  const data = await chrome.storage.session.get(CROP_ARMED_KEY);
+  return (data[CROP_ARMED_KEY] as CropArmed | undefined) ?? null;
+}
+
+async function setCropArmed(v: CropArmed | null): Promise<void> {
+  if (v) await chrome.storage.session.set({ [CROP_ARMED_KEY]: v });
+  else await chrome.storage.session.remove(CROP_ARMED_KEY);
+}
+
+async function showCropIn(tabId: number, lang: string, hint: boolean): Promise<void> {
+  // Ensure content script is loaded (tabs opened before extension load won't have it)
+  try {
+    await chrome.tabs.sendMessage(tabId, { type: 'ping' });
+  } catch {
+    const manifest = chrome.runtime.getManifest();
+    const files = manifest.content_scripts?.[0]?.js ?? [];
+    if (files.length > 0) {
+      await chrome.scripting.executeScript({ target: { tabId }, files });
+    }
+  }
+  await chrome.tabs.sendMessage(tabId, { type: 'start_crop', lang, hint });
+}
+
+function hideCropIn(tabId: number): void {
+  chrome.tabs.sendMessage(tabId, { type: 'stop_crop' }).catch(() => {/* tab gone or restricted */});
+}
+
+async function moveCropTo(tabId: number): Promise<void> {
+  const armed = await getCropArmed();
+  if (!armed) return;
+  if (armed.tabId !== tabId) hideCropIn(armed.tabId);
+  await setCropArmed({ ...armed, tabId });
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (!canCropOn(tab.url)) return;
+    await showCropIn(tabId, armed.lang, !armed.shown);
+    await setCropArmed({ ...armed, tabId, shown: true });
+  } catch {/* restricted page: wait for the next tab */}
+}
+
 chrome.tabs.onActivated.addListener(({ tabId }) => {
   void getTabWorkOrders().then(map => broadcastWorkOrder(map[String(tabId)] ?? null));
+  void moveCropTo(tabId);
+});
+
+// The overlay is lost when the armed tab navigates: show it again on the new page
+chrome.tabs.onUpdated.addListener((tabId, info) => {
+  if (info.status !== 'complete') return;
+  void getCropArmed().then(armed => {
+    if (armed?.tabId === tabId) void moveCropTo(tabId);
+  });
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -178,28 +237,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     case 'take_crop_init':
       (async () => {
-        try {
-          const tabId = msg.tabId as number;
-          // Ensure content script is loaded (tabs opened before extension load won't have it)
-          try {
-            await chrome.tabs.sendMessage(tabId, { type: 'ping' });
-          } catch {
-            const manifest = chrome.runtime.getManifest();
-            const files = manifest.content_scripts?.[0]?.js ?? [];
-            if (files.length > 0) {
-              await chrome.scripting.executeScript({ target: { tabId }, files });
-            }
-          }
-          await chrome.tabs.sendMessage(tabId, { type: 'start_crop', lang: msg.lang ?? 'en' });
-          sendResponse({ ok: true });
-        } catch (err) {
-          sendResponse({ error: String(err) });
-        }
+        const tabId = msg.tabId as number;
+        const lang = (msg.lang as string) ?? 'en';
+        const previous = await getCropArmed();
+        if (previous && previous.tabId !== tabId) hideCropIn(previous.tabId);
+        // Armed even when this tab can't show it (e.g. Autoflex): the next supplier tab will
+        await setCropArmed({ lang, tabId, shown: false });
+        await moveCropTo(tabId);
+        sendResponse({ ok: true });
       })();
       return true;
 
+    case 'crop_ready':
+      // Esc in a tab cancels the crop everywhere (the side panel handles the message itself)
+      if (sender.tab) void setCropArmed(null);
+      return false;
+
     case 'crop_done':
       (async () => {
+        await setCropArmed(null);
         try {
           const tab = sender.tab;
           if (!tab?.windowId) throw new Error('No sender tab');

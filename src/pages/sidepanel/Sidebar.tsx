@@ -82,9 +82,18 @@ export default function Sidebar() {
         setOrderState(storedOrder);
         setCartState(storedCart);
         setAutoflexState(storedAutoflex);
+        orderRef.current = storedOrder;
+        cartRef.current = storedCart;
       } catch {
         setState('login');
       }
+      // After the stored order is loaded, so following the open work order compares against it
+      try {
+        const res = await chrome.runtime.sendMessage({ type: 'get_active_work_order' }) as
+          { workOrderId?: string | null } | undefined;
+        setActiveWo(res?.workOrderId ?? null);
+        followOpenWorkOrderRef.current(res?.workOrderId ?? null);
+      } catch {/* background not ready */}
     })();
   }, []);
 
@@ -110,6 +119,29 @@ export default function Sidebar() {
     };
   }, []);
 
+  // ── Follow the work order open in Autoflex ─────────────────────────────────
+  // Scan/crop parts go to the work order open in Autoflex. The extension keeps it while the
+  // user browses supplier tabs (those report no work order), so it is only replaced when
+  // Autoflex opens another one.
+  const followOpenWorkOrder = (workOrderId: string | null) => {
+    const next = orderForOpenWorkOrder(orderRef.current, workOrderId);
+    if (!next) return;
+    orderRef.current = next;
+    setOrderState(next);
+    void setOrder(next);
+    cartRef.current = [];
+    setCartState([]);
+    void setCart([]);
+    setWorkModeState('order');
+    void setWorkMode('order');
+    if (stateRef.current !== 'checking' && stateRef.current !== 'login') {
+      setVehicleExpanded(false);
+      setState('cart');
+    }
+  };
+  const followOpenWorkOrderRef = useRef(followOpenWorkOrder);
+  followOpenWorkOrderRef.current = followOpenWorkOrder;
+
   // ── chrome.runtime message listener ───────────────────────────────────────
   useEffect(() => {
     const handler = (msg: {
@@ -118,6 +150,7 @@ export default function Sidebar() {
     }) => {
       if (msg.type === 'work_order_active') {
         setActiveWo(msg.workOrderId ?? null);
+        followOpenWorkOrderRef.current(msg.workOrderId ?? null);
         setWoSearch(msg.search === true);
         if (msg.workOrderId) setWoPanelHidden(false);
         return;
@@ -147,10 +180,6 @@ export default function Sidebar() {
     };
 
     chrome.runtime.onMessage.addListener(handler);
-    chrome.runtime
-      .sendMessage({ type: 'get_active_work_order' })
-      .then((res: { workOrderId?: string | null } | undefined) => setActiveWo(res?.workOrderId ?? null))
-      .catch(() => {/* background not ready */});
     return () => chrome.runtime.onMessage.removeListener(handler);
   }, []);
 
@@ -360,25 +389,6 @@ export default function Sidebar() {
     setState('idle');
   };
 
-  // Leaving the Autoflex work order panel to scan/crop a supplier page: parts must go to
-  // the work order open in Autoflex, not to an older one picked in the extension's list.
-  const handleScanSupplierPage = () => {
-    const next = orderForOpenWorkOrder(orderRef.current, activeWo);
-    if (next) {
-      setOrderState(next);
-      void setOrder(next);
-      setCartState([]);
-      void setCart([]);
-      setWorkModeState('order');
-      void setWorkMode('order');
-      setScanError(null);
-      setScanScreenshot(null);
-      setVehicleExpanded(false);
-      setState('cart');
-    }
-    setWoPanelHidden(true);
-  };
-
   const handleLoginIframeLoad = () => {
     loginTimerRef.current = setTimeout(() => {
       loginTimerRef.current = null;
@@ -413,7 +423,7 @@ export default function Sidebar() {
         />
         <button
           type="button"
-          onClick={handleScanSupplierPage}
+          onClick={() => setWoPanelHidden(true)}
           className="m-2 rounded-full text-xs font-semibold text-[#473150] bg-white py-2"
         >
           {t.scanSupplierPage}
