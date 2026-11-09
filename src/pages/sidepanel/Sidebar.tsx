@@ -15,6 +15,7 @@ import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import { aiPartsToCartItems, mergeCart } from '@lib/cart-utils';
+import { orderForOpenWorkOrder } from '@lib/autoflex';
 import BubbleIframe from '@components/BubbleIframe';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
@@ -359,6 +360,25 @@ export default function Sidebar() {
     setState('idle');
   };
 
+  // Leaving the Autoflex work order panel to scan/crop a supplier page: parts must go to
+  // the work order open in Autoflex, not to an older one picked in the extension's list.
+  const handleScanSupplierPage = () => {
+    const next = orderForOpenWorkOrder(orderRef.current, activeWo);
+    if (next) {
+      setOrderState(next);
+      void setOrder(next);
+      setCartState([]);
+      void setCart([]);
+      setWorkModeState('order');
+      void setWorkMode('order');
+      setScanError(null);
+      setScanScreenshot(null);
+      setVehicleExpanded(false);
+      setState('cart');
+    }
+    setWoPanelHidden(true);
+  };
+
   const handleLoginIframeLoad = () => {
     loginTimerRef.current = setTimeout(() => {
       loginTimerRef.current = null;
@@ -393,7 +413,7 @@ export default function Sidebar() {
         />
         <button
           type="button"
-          onClick={() => setWoPanelHidden(true)}
+          onClick={handleScanSupplierPage}
           className="m-2 rounded-full text-xs font-semibold text-[#473150] bg-white py-2"
         >
           {t.scanSupplierPage}

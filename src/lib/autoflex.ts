@@ -66,3 +66,17 @@ export function createPageOffsetter(doc: Document): (h: number) => void {
     }
   };
 }
+
+/**
+ * The order the extension must use for crop/scan when a work order is open in Autoflex.
+ * Returns null when nothing changes (no open work order, or the extension already uses it);
+ * otherwise the open work order, whose plate is not known here (save_part finds the car by the GUID).
+ */
+export function orderForOpenWorkOrder(
+  current: { id: string; plate: string } | null,
+  openWorkOrderId: string | null,
+): { id: string; plate: string } | null {
+  if (!openWorkOrderId) return null;
+  if (current && current.id.toLowerCase() === openWorkOrderId.toLowerCase()) return null;
+  return { id: openWorkOrderId, plate: '' };
+}

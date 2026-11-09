@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, findOpenOrderNumber, createPageOffsetter } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, findOpenOrderNumber, createPageOffsetter, orderForOpenWorkOrder } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -86,5 +86,20 @@ describe('createPageOffsetter', () => {
     expect(doc.body.style.paddingTop).toBe('48px');
     offset(0);
     expect(doc.body.style.paddingTop).toBe('5px');
+  });
+});
+
+describe('orderForOpenWorkOrder', () => {
+  it('returns null when no work order is open in Autoflex', () => {
+    expect(orderForOpenWorkOrder({ id: 'A', plate: '1-AB-23' }, null)).toBeNull();
+  });
+  it('returns null when the extension already uses the open work order (any case)', () => {
+    expect(orderForOpenWorkOrder({ id: '6c7f2af6-aaaa', plate: '1-AB-23' }, '6C7F2AF6-AAAA')).toBeNull();
+  });
+  it('switches to the open work order when the extension has another one', () => {
+    expect(orderForOpenWorkOrder({ id: 'OLD', plate: '1-AB-23' }, 'NEW')).toEqual({ id: 'NEW', plate: '' });
+  });
+  it('switches to the open work order when the extension has none', () => {
+    expect(orderForOpenWorkOrder(null, 'NEW')).toEqual({ id: 'NEW', plate: '' });
   });
 });
