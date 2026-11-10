@@ -10,10 +10,12 @@ import {
   getCart, setCart,
 } from '@lib/storage';
 import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
+import { useT } from '@lib/i18n';
 import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import { aiPartsToCartItems, mergeCart } from '@lib/cart-utils';
+import { orderForOpenWorkOrder } from '@lib/autoflex';
 import BubbleIframe from '@components/BubbleIframe';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
@@ -38,6 +40,11 @@ export default function Sidebar() {
   const [iframeReady, setIframeReady] = useState(false);
   const [finishOrder, setFinishOrder] = useState<Order | null>(null);
   const [loginOverlay, setLoginOverlay] = useState(true);
+  // Autoflex work order open in the active tab (drives the autoflex-panel iframe)
+  const [activeWo, setActiveWo] = useState<string | null>(null);
+  const [woSearch, setWoSearch] = useState(false);
+  const [woPanelHidden, setWoPanelHidden] = useState(false);
+  const t = useT(lang);
   const loginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs to avoid stale closures in event listeners
@@ -75,9 +82,18 @@ export default function Sidebar() {
         setOrderState(storedOrder);
         setCartState(storedCart);
         setAutoflexState(storedAutoflex);
+        orderRef.current = storedOrder;
+        cartRef.current = storedCart;
       } catch {
         setState('login');
       }
+      // After the stored order is loaded, so following the open work order compares against it
+      try {
+        const res = await chrome.runtime.sendMessage({ type: 'get_active_work_order' }) as
+          { workOrderId?: string | null; plate?: string } | undefined;
+        setActiveWo(res?.workOrderId ?? null);
+        followOpenWorkOrderRef.current(res?.workOrderId ?? null, res?.plate ?? '');
+      } catch {/* background not ready */}
     })();
   }, []);
 
@@ -103,9 +119,49 @@ export default function Sidebar() {
     };
   }, []);
 
+  // ── Follow the work order open in Autoflex ─────────────────────────────────
+  // Scan/crop parts go to the work order open in Autoflex. The extension keeps it while the
+  // user browses supplier tabs (those report no work order), so it is only replaced when
+  // Autoflex opens another one.
+  const followOpenWorkOrder = (workOrderId: string | null, plate = '') => {
+    if (!workOrderId) return;
+    const next = orderForOpenWorkOrder(orderRef.current, workOrderId, plate);
+    const sameOrder = !next || orderRef.current?.id.toLowerCase() === next.id.toLowerCase();
+    if (next) {
+      orderRef.current = next;
+      setOrderState(next);
+      void setOrder(next);
+    }
+    // Same work order and already in order mode: nothing else to do (keep the cart)
+    if (sameOrder && workMode === 'order') return;
+    if (!sameOrder) {
+      cartRef.current = [];
+      setCartState([]);
+      void setCart([]);
+    }
+    setWorkModeState('order');
+    void setWorkMode('order');
+    if (stateRef.current !== 'checking' && stateRef.current !== 'login') {
+      setVehicleExpanded(false);
+      setState('cart');
+    }
+  };
+  const followOpenWorkOrderRef = useRef(followOpenWorkOrder);
+  followOpenWorkOrderRef.current = followOpenWorkOrder;
+
   // ── chrome.runtime message listener ───────────────────────────────────────
   useEffect(() => {
-    const handler = (msg: { type: string; url?: string; imageBase64?: string; error?: string }) => {
+    const handler = (msg: {
+      type: string; url?: string; imageBase64?: string; error?: string;
+      workOrderId?: string | null; plate?: string; search?: boolean;
+    }) => {
+      if (msg.type === 'work_order_active') {
+        setActiveWo(msg.workOrderId ?? null);
+        followOpenWorkOrderRef.current(msg.workOrderId ?? null, msg.plate ?? '');
+        setWoSearch(msg.search === true);
+        if (msg.workOrderId) setWoPanelHidden(false);
+        return;
+      }
       if (msg.type === 'crop_ready') {
         if (msg.error) {
           setScanError(msg.error);
@@ -362,6 +418,27 @@ export default function Sidebar() {
     );
   }
 
+  // Autoflex work order open in the active tab: show the Parts iQ panel for it
+  if (activeWo && !woPanelHidden) {
+    return (
+      <div className="flex flex-col h-screen bg-[#F0F0F0]">
+        <BubbleIframe
+          key={activeWo}
+          src={buildBubbleUrl('autoflexPanel', { wo: activeWo, search: woSearch ? '1' : undefined })}
+          title="Parts iQ – Autoflex"
+          className="flex-1 w-full"
+        />
+        <button
+          type="button"
+          onClick={() => setWoPanelHidden(true)}
+          className="m-2 rounded-full text-xs font-semibold text-[#473150] bg-white py-2"
+        >
+          {t.scanSupplierPage}
+        </button>
+      </div>
+    );
+  }
+
   if (state === 'finish') {
     return <FinishState lang={lang} workMode={workMode} order={finishOrder} onNewQuote={handleNewQuote} />;
   }
@@ -413,6 +490,15 @@ export default function Sidebar() {
 
   return (
     <div className="flex flex-col h-screen bg-[#F0F0F0]">
+      {activeWo && (
+        <button
+          type="button"
+          onClick={() => setWoPanelHidden(false)}
+          className="m-2 rounded-full text-xs font-semibold text-[#473150] bg-[#00C6B2] py-2"
+        >
+          {t.backToWorkOrder}
+        </button>
+      )}
       {!vehicleExpanded && panelHeader}
 
       {state === 'scanning' && (

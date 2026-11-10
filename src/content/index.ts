@@ -15,13 +15,24 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   } else if (msg.type === 'start_crop') {
     const lang = (msg.lang as string) ?? 'en';
-    chrome.storage.local.get('partsiq_skip_crop_hint', (result) => {
-      if (result.partsiq_skip_crop_hint) {
-        injectCropOverlay();
-      } else {
-        injectCropHint(lang, () => injectCropOverlay());
-      }
-    });
+    // hint: false when the crop follows the user to another tab (hint already seen)
+    if (msg.hint === false || cropOverlay || cropHintEl) {
+      injectCropOverlay();
+    } else {
+      chrome.storage.local.get('partsiq_skip_crop_hint', (result) => {
+        if (result.partsiq_skip_crop_hint) {
+          injectCropOverlay();
+        } else {
+          injectCropHint(lang, () => injectCropOverlay());
+        }
+      });
+    }
+    sendResponse({ ok: true });
+  } else if (msg.type === 'stop_crop') {
+    // The crop moved to another tab
+    cropHintEl?.remove();
+    cropHintEl = null;
+    removeCropOverlay();
     sendResponse({ ok: true });
   }
 });
@@ -71,10 +82,13 @@ function createCursorSvg(): SVGSVGElement {
   return svg;
 }
 
+let cropHintEl: HTMLDivElement | null = null;
+
 function injectCropHint(lang: string, onDone: () => void) {
   const isNl = lang === 'nl';
 
   const hint = document.createElement('div');
+  cropHintEl = hint;
   hint.style.cssText = [
     'position:fixed', 'inset:0', 'z-index:2147483647',
     'display:flex', 'flex-direction:column', 'align-items:center', 'justify-content:center',
@@ -146,9 +160,10 @@ function injectCropHint(lang: string, onDone: () => void) {
   // "Got it!" dismisses the hint then shows the cropper after a short
   // delay so the mouseup/click doesn't leak into the crop overlay.
   function dismiss() {
-    if (dismissed) return;
+    if (dismissed || cropHintEl !== hint) return;
     dismissed = true;
     hint.remove();
+    cropHintEl = null;
     setTimeout(onDone, 50);
   }
 
@@ -211,14 +226,18 @@ function injectCropOverlay() {
     const y = Math.min(e.clientY, startY);
     const width = Math.abs(e.clientX - startX);
     const height = Math.abs(e.clientY - startY);
-    removeCropOverlay();
-    if (width > 10 && height > 10) {
-      chrome.runtime.sendMessage({
-        type: 'crop_done',
-        rect: { x, y, width, height },
-        dpr: window.devicePixelRatio,
-      });
+    if (width <= 10 || height <= 10) {
+      // A click or tiny drag: keep the crop open so the user can try again (Esc cancels)
+      selectionEl?.remove();
+      selectionEl = null;
+      return;
     }
+    removeCropOverlay();
+    chrome.runtime.sendMessage({
+      type: 'crop_done',
+      rect: { x, y, width, height },
+      dpr: window.devicePixelRatio,
+    });
   });
 
   cropKeyHandler = (e: KeyboardEvent) => {
