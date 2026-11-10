@@ -28,19 +28,37 @@ export function parseOrderNumber(text: string | null | undefined): string | null
   return match ? match[1] : null;
 }
 
+/** License plate (2nd part) from a work order header text, or '' (no plate / not a header). */
+export function parseOrderPlate(text: string | null | undefined): string {
+  if (!parseOrderNumber(text)) return '';
+  return (text ?? '').split('|')[1]?.trim() ?? '';
+}
+
 const isRendered = (el: Element): boolean => el.getClientRects().length > 0;
+
+function findOpenOrderHeader(root: ParentNode, isVisible: (el: Element) => boolean): string | null {
+  for (const form of root.querySelectorAll(`svy-form[name="${WORK_ORDER_FORM}"]`)) {
+    if (!isVisible(form)) continue;
+    const text = form.querySelector(TITLE_SELECTOR)?.textContent;
+    if (parseOrderNumber(text)) return text ?? null;
+  }
+  return null;
+}
 
 /** Order number of the work order currently open in Autoflex, or null. */
 export function findOpenOrderNumber(
   root: ParentNode = document,
   isVisible: (el: Element) => boolean = isRendered,
 ): string | null {
-  for (const form of root.querySelectorAll(`svy-form[name="${WORK_ORDER_FORM}"]`)) {
-    if (!isVisible(form)) continue;
-    const nr = parseOrderNumber(form.querySelector(TITLE_SELECTOR)?.textContent);
-    if (nr) return nr;
-  }
-  return null;
+  return parseOrderNumber(findOpenOrderHeader(root, isVisible));
+}
+
+/** License plate shown in the header of the open work order, or ''. */
+export function findOpenOrderPlate(
+  root: ParentNode = document,
+  isVisible: (el: Element) => boolean = isRendered,
+): string {
+  return parseOrderPlate(findOpenOrderHeader(root, isVisible));
 }
 
 /**
@@ -70,13 +88,17 @@ export function createPageOffsetter(doc: Document): (h: number) => void {
 /**
  * The order the extension must use for crop/scan when a work order is open in Autoflex.
  * Returns null when nothing changes (no open work order, or the extension already uses it);
- * otherwise the open work order, whose plate is not known here (save_part finds the car by the GUID).
+ * otherwise the open work order with the plate the Autoflex banner reported ('' when unknown:
+ * save_part finds the car by the GUID). A missing plate on the current order is filled in.
  */
 export function orderForOpenWorkOrder(
   current: { id: string; plate: string } | null,
   openWorkOrderId: string | null,
+  plate = '',
 ): { id: string; plate: string } | null {
   if (!openWorkOrderId) return null;
-  if (current && current.id.toLowerCase() === openWorkOrderId.toLowerCase()) return null;
-  return { id: openWorkOrderId, plate: '' };
+  if (current && current.id.toLowerCase() === openWorkOrderId.toLowerCase()) {
+    return !current.plate && plate ? { ...current, plate } : null;
+  }
+  return { id: openWorkOrderId, plate };
 }

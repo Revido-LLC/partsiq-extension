@@ -90,9 +90,9 @@ export default function Sidebar() {
       // After the stored order is loaded, so following the open work order compares against it
       try {
         const res = await chrome.runtime.sendMessage({ type: 'get_active_work_order' }) as
-          { workOrderId?: string | null } | undefined;
+          { workOrderId?: string | null; plate?: string } | undefined;
         setActiveWo(res?.workOrderId ?? null);
-        followOpenWorkOrderRef.current(res?.workOrderId ?? null);
+        followOpenWorkOrderRef.current(res?.workOrderId ?? null, res?.plate ?? '');
       } catch {/* background not ready */}
     })();
   }, []);
@@ -123,15 +123,22 @@ export default function Sidebar() {
   // Scan/crop parts go to the work order open in Autoflex. The extension keeps it while the
   // user browses supplier tabs (those report no work order), so it is only replaced when
   // Autoflex opens another one.
-  const followOpenWorkOrder = (workOrderId: string | null) => {
-    const next = orderForOpenWorkOrder(orderRef.current, workOrderId);
-    if (!next) return;
-    orderRef.current = next;
-    setOrderState(next);
-    void setOrder(next);
-    cartRef.current = [];
-    setCartState([]);
-    void setCart([]);
+  const followOpenWorkOrder = (workOrderId: string | null, plate = '') => {
+    if (!workOrderId) return;
+    const next = orderForOpenWorkOrder(orderRef.current, workOrderId, plate);
+    const sameOrder = !next || orderRef.current?.id.toLowerCase() === next.id.toLowerCase();
+    if (next) {
+      orderRef.current = next;
+      setOrderState(next);
+      void setOrder(next);
+    }
+    // Same work order and already in order mode: nothing else to do (keep the cart)
+    if (sameOrder && workMode === 'order') return;
+    if (!sameOrder) {
+      cartRef.current = [];
+      setCartState([]);
+      void setCart([]);
+    }
     setWorkModeState('order');
     void setWorkMode('order');
     if (stateRef.current !== 'checking' && stateRef.current !== 'login') {
@@ -146,11 +153,11 @@ export default function Sidebar() {
   useEffect(() => {
     const handler = (msg: {
       type: string; url?: string; imageBase64?: string; error?: string;
-      workOrderId?: string | null; search?: boolean;
+      workOrderId?: string | null; plate?: string; search?: boolean;
     }) => {
       if (msg.type === 'work_order_active') {
         setActiveWo(msg.workOrderId ?? null);
-        followOpenWorkOrderRef.current(msg.workOrderId ?? null);
+        followOpenWorkOrderRef.current(msg.workOrderId ?? null, msg.plate ?? '');
         setWoSearch(msg.search === true);
         if (msg.workOrderId) setWoPanelHidden(false);
         return;

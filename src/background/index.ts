@@ -114,10 +114,29 @@ async function setTabWorkOrder(tabId: number, workOrderId: string | null): Promi
   await chrome.storage.session.set({ [CONFIG.STORAGE_KEYS.TAB_WORK_ORDERS]: map });
 }
 
+async function getWorkOrderPlates(): Promise<Record<string, string>> {
+  const key = CONFIG.STORAGE_KEYS.WORK_ORDER_PLATES;
+  const data = await chrome.storage.session.get(key);
+  return (data[key] as Record<string, string> | undefined) ?? {};
+}
+
+async function setWorkOrderPlate(workOrderId: string, plate: string): Promise<void> {
+  const map = await getWorkOrderPlates();
+  map[workOrderId.toLowerCase()] = plate;
+  await chrome.storage.session.set({ [CONFIG.STORAGE_KEYS.WORK_ORDER_PLATES]: map });
+}
+
+async function plateOf(workOrderId: string | null): Promise<string> {
+  if (!workOrderId) return '';
+  return (await getWorkOrderPlates())[workOrderId.toLowerCase()] ?? '';
+}
+
 function broadcastWorkOrder(workOrderId: string | null, search = false): void {
-  chrome.runtime
-    .sendMessage({ type: 'work_order_active', workOrderId, search })
-    .catch(() => {/* side panel not open */});
+  void plateOf(workOrderId).then(plate =>
+    chrome.runtime
+      .sendMessage({ type: 'work_order_active', workOrderId, plate, search })
+      .catch(() => {/* side panel not open */}),
+  );
 }
 
 async function activeTabId(): Promise<number | undefined> {
@@ -200,6 +219,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const tabId = sender.tab?.id;
         if (!tabId) return;
         const workOrderId = typeof msg.workOrderId === 'string' ? msg.workOrderId : null;
+        const plate = typeof msg.plate === 'string' ? msg.plate : '';
+        if (workOrderId && plate) await setWorkOrderPlate(workOrderId, plate);
         await setTabWorkOrder(tabId, workOrderId);
         if (!workOrderId) await chrome.action.setBadgeText({ tabId, text: '' });
         if ((await activeTabId()) === tabId) broadcastWorkOrder(workOrderId);
@@ -218,7 +239,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       (async () => {
         const tabId = await activeTabId();
         const map = await getTabWorkOrders();
-        sendResponse({ workOrderId: tabId ? map[String(tabId)] ?? null : null });
+        const workOrderId = tabId ? map[String(tabId)] ?? null : null;
+        sendResponse({ workOrderId, plate: await plateOf(workOrderId) });
       })();
       return true;
 

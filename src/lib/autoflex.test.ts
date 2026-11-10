@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, findOpenOrderNumber, createPageOffsetter, orderForOpenWorkOrder } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -29,6 +29,18 @@ describe('parseOrderNumber', () => {
   });
 });
 
+describe('parseOrderPlate', () => {
+  it('reads the plate from the work order header', () => {
+    expect(parseOrderPlate('20240135 | 07-XXH-3 | VOLKSWAGEN UP')).toBe('07-XXH-3');
+    expect(parseOrderPlate('  20240018 |98-ZPZ-7')).toBe('98-ZPZ-7');
+  });
+  it('returns empty without a plate or for other texts', () => {
+    expect(parseOrderPlate('20240018 |  | HYUNDAI')).toBe('');
+    expect(parseOrderPlate('20240018')).toBe('');
+    expect(parseOrderPlate('18-07-2024 | test')).toBe('');
+  });
+});
+
 function page(html: string): Document {
   const doc = document.implementation.createHTMLDocument('t');
   doc.body.innerHTML = html;
@@ -40,6 +52,7 @@ describe('findOpenOrderNumber', () => {
   it('finds the number in the open work order form', () => {
     const doc = page('<svy-form name="orders_dtl"><div data-afl="orders_dtl.title_label"><span><span>20240018 | 98-ZPZ-7 | HYUNDAI I 10</span></span></div></svy-form>');
     expect(findOpenOrderNumber(doc, visible)).toBe('20240018');
+    expect(findOpenOrderPlate(doc, visible)).toBe('98-ZPZ-7');
   });
   it('ignores headers outside the work order form', () => {
     const doc = page('<svy-form name="relations_dtl"><div data-afl="orders_dtl.title_label">20240018 | Bakker</div></svy-form>');
@@ -101,5 +114,14 @@ describe('orderForOpenWorkOrder', () => {
   });
   it('switches to the open work order when the extension has none', () => {
     expect(orderForOpenWorkOrder(null, 'NEW')).toEqual({ id: 'NEW', plate: '' });
+  });
+  it('carries the plate reported by the Autoflex banner', () => {
+    expect(orderForOpenWorkOrder({ id: 'OLD', plate: '1-AB-23' }, 'NEW', '98-ZPZ-7')).toEqual({ id: 'NEW', plate: '98-ZPZ-7' });
+  });
+  it('fills in a missing plate on the same work order', () => {
+    expect(orderForOpenWorkOrder({ id: 'a', plate: '' }, 'A', '98-ZPZ-7')).toEqual({ id: 'a', plate: '98-ZPZ-7' });
+  });
+  it('keeps a plate the order already has', () => {
+    expect(orderForOpenWorkOrder({ id: 'A', plate: '1-AB-23' }, 'A', '98-ZPZ-7')).toBeNull();
   });
 });

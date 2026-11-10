@@ -4,7 +4,7 @@
 // isolated in a Shadow DOM) and relays banner messages to the background.
 // The banner resolves the order number to the Autoflex GUID and posts it back.
 import { CONFIG } from '@lib/constants';
-import { findOpenOrderNumber, createPageOffsetter } from '@lib/autoflex';
+import { findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter } from '@lib/autoflex';
 
 const DEFAULT_HEIGHT = 48;
 const HIDDEN_KEY = (nr: string) => `partsiq_banner_hidden_${nr}`;
@@ -20,8 +20,8 @@ function bannerUrl(nr: string): string {
   return `${CONFIG.BUBBLE_BASE_URL}${CONFIG.BUBBLE_PAGES.autoflexBanner}?${query}`;
 }
 
-function sendWorkOrder(workOrderId: string | null): void {
-  chrome.runtime.sendMessage({ type: 'autoflex_work_order', workOrderId }).catch(() => {});
+function sendWorkOrder(workOrderId: string | null, plate = ''): void {
+  chrome.runtime.sendMessage({ type: 'autoflex_work_order', workOrderId, plate }).catch(() => {});
 }
 
 function setHeight(height: number): void {
@@ -74,13 +74,17 @@ function check(): void {
 
 window.addEventListener('message', (event) => {
   if (event.origin !== CONFIG.BUBBLE_ORIGIN || !iframe || event.source !== iframe.contentWindow) return;
-  const data = event.data as { type?: string; count?: number; height?: number; workOrderId?: string } | null;
+  const data = event.data as { type?: string; count?: number; height?: number; workOrderId?: string; plate?: string } | null;
   switch (data?.type) {
     case 'partsiq:banner_ready':
       setHeight(DEFAULT_HEIGHT);
       break;
     case 'partsiq:banner_wo':
-      if (currentNr && typeof data.workOrderId === 'string' && data.workOrderId) sendWorkOrder(data.workOrderId);
+      if (currentNr && typeof data.workOrderId === 'string' && data.workOrderId) {
+        // Plate from the Autoflex header; the banner's (Autoflex API) is often empty
+        const plate = findOpenOrderPlate() || (typeof data.plate === 'string' ? data.plate.trim() : '');
+        sendWorkOrder(data.workOrderId, plate);
+      }
       break;
     case 'partsiq:banner_hide':
       if (currentNr) sessionStorage.setItem(HIDDEN_KEY(currentNr), '1');
