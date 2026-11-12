@@ -1,5 +1,8 @@
 import type { Lang } from '@types/parts';
 import { useT } from '@lib/i18n';
+import Card from '@components/ui/Card';
+import PillButton from '@components/ui/PillButton';
+import Tag from '@components/ui/Tag';
 
 interface Props {
   lang: Lang;
@@ -13,23 +16,20 @@ export default function ScanningState({ lang, error, screenshot, onRetry }: Prop
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 px-4 text-center bg-[#F0F0F0]">
-        <p className="text-sm text-red-600">{t.scanError}</p>
-        <p className="text-xs text-gray-500">{error}</p>
-        <button
-          onClick={onRetry}
-          className="px-5 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
-        >
+      <Card className="items-center gap-3 py-6 text-center">
+        <p className="text-sm font-semibold text-black">{t.scanError}</p>
+        <Tag tone="amber">{error}</Tag>
+        <PillButton variant="primary" onClick={onRetry}>
           {t.retry}
-        </button>
-      </div>
+        </PillButton>
+      </Card>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 px-4 bg-[#F0F0F0]">
+    <Card className="items-center gap-3 py-5 text-center">
       {screenshot && (
-        <div className="w-full rounded overflow-hidden border border-gray-200 relative">
+        <div className="w-full rounded-md overflow-hidden border border-pq-line relative">
           <img
             src={`data:image/jpeg;base64,${screenshot}`}
             alt="screenshot"
@@ -42,9 +42,9 @@ export default function ScanningState({ lang, error, screenshot, onRetry }: Prop
         </div>
       )}
       {!screenshot && (
-        <div className="w-6 h-6 border-2 border-[#00C6B2] border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-pq-teal border-t-transparent rounded-full animate-spin" />
       )}
-      <p className="text-sm text-gray-600 text-center">{t.analyzing}</p>
-    </div>
+      <p className="text-[13px] font-medium text-pq-muted">{t.analyzing}</p>
+    </Card>
   );
 }

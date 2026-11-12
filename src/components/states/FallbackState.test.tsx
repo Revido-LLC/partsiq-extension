@@ -132,3 +132,17 @@ describe('FallbackState — cart with sent items', () => {
     expect(screen.getByText('Sending Part')).toBeInTheDocument();
   });
 });
+
+describe('FallbackState — WO panel style', () => {
+  it('fallback offers crop and manual add inside cards', () => {
+    render(<FallbackState {...defaultProps} cart={[]} />);
+    expect(screen.getByRole('button', { name: /Crop selection/ })).toHaveClass('bg-pq-teal');
+    expect(screen.getByText('+ Add part manually')).toBeInTheDocument();
+    expect(screen.getByText(/no parts found/i).closest('.rounded-lg')).not.toBeNull();
+  });
+
+  it('sent items show a tag', () => {
+    render(<FallbackState {...defaultProps} cart={[makeSentItem({})]} />);
+    expect(screen.getByText('✓ Sent')).toHaveClass('bg-pq-tag');
+  });
+});
