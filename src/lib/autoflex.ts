@@ -169,3 +169,11 @@ export function shouldForgetTabWorkOrder(info: { status?: string }, hasWorkOrder
 export function shouldShowPanelHeader(s: { vehicleExpanded: boolean; activeWo: string | null }): boolean {
   return !s.vehicleExpanded || !!s.activeWo;
 }
+
+/** JS files of the Autoflex content script in the (built) manifest — used to re-inject it after an update. */
+export function autoflexContentScriptFiles(
+  scripts: { matches?: string[]; js?: string[] }[] | undefined,
+): string[] {
+  const entry = (scripts ?? []).find(s => (s.matches ?? []).some(m => AUTOFLEX_DOMAINS.some(d => m.includes(d))));
+  return entry?.js ?? [];
+}

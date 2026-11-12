@@ -1,7 +1,21 @@
 import { CONFIG } from '@lib/constants';
 import { dataUrlToBlob } from '@lib/image-utils';
 import { canCropOn } from '@lib/crop';
-import { pickOpenWorkOrder, shouldForgetTabWorkOrder } from '@lib/autoflex';
+import { pickOpenWorkOrder, shouldForgetTabWorkOrder, autoflexContentScriptFiles, isAutoflexUrl } from '@lib/autoflex';
+
+// After an install/update/reload the Autoflex tabs still run the old (orphaned) content script,
+// which can no longer report a closed work order. Inject the new one so it takes over.
+chrome.runtime.onInstalled.addListener(() => {
+  const files = autoflexContentScriptFiles(chrome.runtime.getManifest().content_scripts);
+  if (files.length === 0) return;
+  void chrome.tabs.query({}).then(tabs => {
+    for (const tab of tabs) {
+      if (tab.id && isAutoflexUrl(tab.url)) {
+        chrome.scripting.executeScript({ target: { tabId: tab.id }, files }).catch(() => {/* tab not ready */});
+      }
+    }
+  });
+});
 
 // Open sidebar when extension icon is clicked
 chrome.sidePanel

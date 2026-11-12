@@ -61,7 +61,32 @@ function showBanner(nr: string): void {
   iframe!.src = bannerUrl(nr);
 }
 
+/** False once the extension was reloaded/updated: this copy of the script is orphaned. */
+function extensionAlive(): boolean {
+  try {
+    return !!chrome.runtime?.id;
+  } catch {
+    return false;
+  }
+}
+
+let stopped = false;
+// Orphaned after an extension reload: it can no longer report a closed work order, so it
+// removes its banner and stops — the re-injected script (background onInstalled) takes over.
+function stop(): void {
+  if (stopped) return;
+  stopped = true;
+  observer.disconnect();
+  clearInterval(poll);
+  removeBanner();
+}
+
 function check(): void {
+  if (stopped) return;
+  if (!extensionAlive()) {
+    stop();
+    return;
+  }
   const nr = findOpenOrderNumber();
   if (host && bannerHeight) applyOffset(bannerHeight); // Servoy may re-render #mainForm
   if (nr === currentNr) return;
@@ -101,10 +126,11 @@ window.addEventListener('message', (event) => {
 
 // Servoy swaps forms without navigating: watch the DOM (debounced) plus a light poll.
 let pending = false;
-new MutationObserver(() => {
+const observer = new MutationObserver(() => {
   if (pending) return;
   pending = true;
   setTimeout(() => { pending = false; check(); }, 300);
-}).observe(document.body, { childList: true, subtree: true, characterData: true });
-setInterval(check, 1500);
+});
+observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+const poll = setInterval(check, 1500);
 check();

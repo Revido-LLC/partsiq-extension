@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder, isRepeatedWorkOrder, shouldForgetTabWorkOrder, shouldShowPanelHeader } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder, isRepeatedWorkOrder, shouldForgetTabWorkOrder, shouldShowPanelHeader, autoflexContentScriptFiles } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -191,4 +191,16 @@ describe('shouldShowPanelHeader', () => {
     expect(shouldShowPanelHeader({ vehicleExpanded: true, activeWo: null })).toBe(false));
   it('keeps it when an Autoflex work order is open (back link)', () =>
     expect(shouldShowPanelHeader({ vehicleExpanded: true, activeWo: 'WO-A' })).toBe(true));
+});
+
+describe('autoflexContentScriptFiles', () => {
+  const scripts = [
+    { matches: ['<all_urls>'], js: ['assets/index.js'] },
+    { matches: ['https://*.autoflex10.eu/*', 'https://*.autoflex10.work/*'], js: ['assets/autoflex.js'] },
+  ];
+  it('picks the Autoflex entry from the built manifest', () =>
+    expect(autoflexContentScriptFiles(scripts)).toEqual(['assets/autoflex.js']));
+  it('returns nothing when there is no Autoflex entry', () =>
+    expect(autoflexContentScriptFiles([scripts[0]])).toEqual([]));
+  it('handles a missing list', () => expect(autoflexContentScriptFiles(undefined)).toEqual([]));
 });
