@@ -15,7 +15,7 @@ import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import { aiPartsToCartItems, mergeCart } from '@lib/cart-utils';
-import { orderForOpenWorkOrder, workModeAfterLogin, shouldReturnToWorkOrder, isRepeatedWorkOrder } from '@lib/autoflex';
+import { orderForOpenWorkOrder, workModeAfterLogin, shouldReturnToWorkOrder, isRepeatedWorkOrder, shouldShowPanelHeader } from '@lib/autoflex';
 import BubbleIframe from '@components/BubbleIframe';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
@@ -526,7 +526,7 @@ export default function Sidebar() {
   return (
     <div className="flex flex-col h-screen gap-2 bg-pq-page p-2.5">
       {/* Header card (plate, back to the work order, change order/vehicle) on every scan/cart screen */}
-      {panelHeader}
+      {shouldShowPanelHeader({ vehicleExpanded, activeWo }) && panelHeader}
 
       {state === 'scanning' && (
         <div className="flex-1">

@@ -55,3 +55,19 @@ describe('Card', () => {
     expect(screen.getByTestId('c')).toHaveClass('bg-white', 'rounded-lg', 'border-pq-line');
   });
 });
+
+describe('minor fixes', () => {
+  it('Card compact uses the smaller padding only', () => {
+    render(<Card compact data-testid="cc">x</Card>);
+    const el = screen.getByTestId('cc');
+    expect(el).toHaveClass('px-2', 'py-2');
+    expect(el).not.toHaveClass('px-3');
+    expect(el).not.toHaveClass('py-2.5');
+  });
+  it('Tag wraps long unspaced text inside the card', () => {
+    render(<Tag tone="amber">https://example.com/a/very/long/url/without/spaces</Tag>);
+    const el = screen.getByText(/example\.com/);
+    expect(el).toHaveClass('max-w-full', '[overflow-wrap:anywhere]');
+    expect(el).not.toHaveClass('shrink-0');
+  });
+});

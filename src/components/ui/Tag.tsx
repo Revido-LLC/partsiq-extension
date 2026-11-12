@@ -10,7 +10,7 @@ const TONES = {
 /** Small rounded label (status, savings, sent…). */
 export default function Tag({ tone, children }: { tone: keyof typeof TONES; children: ReactNode }) {
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-2xl px-2 py-0.5 text-xs font-medium ${TONES[tone]}`}>
+    <span className={`inline-flex max-w-full items-center rounded-2xl px-2 py-0.5 text-xs font-medium [overflow-wrap:anywhere] ${TONES[tone]}`}>
       {children}
     </span>
   );

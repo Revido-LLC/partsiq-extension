@@ -326,8 +326,8 @@ export default function CartState({
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-semibold text-black truncate flex-1">{item.name}</span>
-                    {item.status === 'sending' && <Tag tone="neutral">{t.sending}</Tag>}
-                    {item.status === 'sent' && <Tag tone="purple">{t.sent}</Tag>}
+                    {item.status === 'sending' && <span className="shrink-0"><Tag tone="neutral">{t.sending}</Tag></span>}
+                    {item.status === 'sent' && <span className="shrink-0"><Tag tone="purple">{t.sent}</Tag></span>}
                   </div>
 
                   {/* OEM */}
@@ -431,7 +431,7 @@ export default function CartState({
       )}
 
       {/* Footer */}
-      <Card className="shrink-0 flex-row flex-wrap gap-2 px-2 py-2">
+      <Card compact className="shrink-0 flex-row flex-wrap gap-2">
         <PillButton variant="secondary" onClick={handleClearUnsent} className="flex-1 py-2">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6"/>

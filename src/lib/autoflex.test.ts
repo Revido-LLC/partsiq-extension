@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder, isRepeatedWorkOrder, shouldForgetTabWorkOrder } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder, isRepeatedWorkOrder, shouldForgetTabWorkOrder, shouldShowPanelHeader } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -182,4 +182,13 @@ describe('shouldForgetTabWorkOrder', () => {
     expect(shouldForgetTabWorkOrder({ status: 'complete' }, true)).toBe(false);
     expect(shouldForgetTabWorkOrder({ status: 'loading' }, false)).toBe(false);
   });
+});
+
+describe('shouldShowPanelHeader', () => {
+  it('shows the header once an order or vehicle is chosen', () =>
+    expect(shouldShowPanelHeader({ vehicleExpanded: false, activeWo: null })).toBe(true));
+  it('hides it for a crop started from the selection screen', () =>
+    expect(shouldShowPanelHeader({ vehicleExpanded: true, activeWo: null })).toBe(false));
+  it('keeps it when an Autoflex work order is open (back link)', () =>
+    expect(shouldShowPanelHeader({ vehicleExpanded: true, activeWo: 'WO-A' })).toBe(true));
 });

@@ -82,7 +82,7 @@ export default function FallbackState({ lang, cart, onAddManual, onCrop, onScan,
                 <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-semibold text-black truncate flex-1">{item.name}</span>
-                    <Tag tone="purple">{t.sent}</Tag>
+                    <span className="shrink-0"><Tag tone="purple">{t.sent}</Tag></span>
                   </div>
                   {item.oem && (
                     <div className="flex items-center gap-1">

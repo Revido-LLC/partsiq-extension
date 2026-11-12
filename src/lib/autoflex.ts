@@ -161,3 +161,11 @@ export function isRepeatedWorkOrder(
 export function shouldForgetTabWorkOrder(info: { status?: string }, hasWorkOrder: boolean): boolean {
   return hasWorkOrder && info.status === 'loading';
 }
+
+/**
+ * Header card of the scan/cart screens: hidden for a crop started from the selection screen
+ * (nothing chosen yet), but kept while an Autoflex work order is open — it holds the back link.
+ */
+export function shouldShowPanelHeader(s: { vehicleExpanded: boolean; activeWo: string | null }): boolean {
+  return !s.vehicleExpanded || !!s.activeWo;
+}
