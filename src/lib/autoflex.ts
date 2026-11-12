@@ -114,3 +114,31 @@ export function workModeAfterLogin(
 ): 'order' | 'vehicle' {
   return autoflexConnected || openWorkOrderId ? 'order' : 'vehicle';
 }
+
+/**
+ * Work order the extension follows across tabs: the active tab's when it has one, else the
+ * last used Autoflex tab's (if it still has one), else any tab's. Supplier tabs never clear it.
+ */
+export function pickOpenWorkOrder(
+  tabWorkOrders: Record<string, string>,
+  activeTabId: number | undefined,
+  lastAutoflexTabId: number | undefined,
+): string | null {
+  if (activeTabId !== undefined && tabWorkOrders[String(activeTabId)]) return tabWorkOrders[String(activeTabId)];
+  if (lastAutoflexTabId !== undefined && tabWorkOrders[String(lastAutoflexTabId)]) {
+    return tabWorkOrders[String(lastAutoflexTabId)];
+  }
+  return Object.values(tabWorkOrders)[0] ?? null;
+}
+
+/**
+ * The side panel goes back to the work order panel by itself only from the selection screen
+ * (idle + expanded); mid-flow (scan, crop, cart, finish) the user finishes first.
+ */
+export function shouldReturnToWorkOrder(s: {
+  state: string;
+  vehicleExpanded: boolean;
+  activeWo: string | null;
+}): boolean {
+  return !!s.activeWo && s.state === 'idle' && s.vehicleExpanded;
+}

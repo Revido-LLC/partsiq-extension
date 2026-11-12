@@ -34,5 +34,7 @@ export const CONFIG = {
     TAB_WORK_ORDERS: 'partsiq_tab_work_orders',
     /** chrome.storage.session: Record<workOrderId (lowercase), license plate> from the Autoflex banner */
     WORK_ORDER_PLATES: 'partsiq_work_order_plates',
+    /** chrome.storage.session: id of the last Autoflex tab that showed a work order */
+    LAST_AUTOFLEX_TAB: 'partsiq_last_autoflex_tab',
   },
 } as const;

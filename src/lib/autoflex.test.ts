@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -139,4 +139,24 @@ describe('workModeAfterLogin', () => {
     expect(workModeAfterLogin(false, null)).toBe('vehicle');
     expect(workModeAfterLogin(false, '')).toBe('vehicle');
   });
+});
+
+describe('pickOpenWorkOrder', () => {
+  const map = { '1': 'WO-A', '2': 'WO-B' };
+  it('uses the active tab when it has a work order', () => expect(pickOpenWorkOrder(map, 2, 1)).toBe('WO-B'));
+  it('prefers the last used Autoflex tab', () => expect(pickOpenWorkOrder(map, 9, 2)).toBe('WO-B'));
+  it('ignores the last tab when it no longer has a work order', () => expect(pickOpenWorkOrder({ '1': 'WO-A' }, 9, 2)).toBe('WO-A'));
+  it('returns null when no tab has a work order', () => expect(pickOpenWorkOrder({}, 9, 2)).toBeNull());
+});
+
+describe('shouldReturnToWorkOrder', () => {
+  it('returns from the selection screen', () =>
+    expect(shouldReturnToWorkOrder({ state: 'idle', vehicleExpanded: true, activeWo: 'WO-A' })).toBe(true));
+  it('stays put mid-flow', () => {
+    for (const state of ['cart', 'scanning', 'fallback', 'finish'])
+      expect(shouldReturnToWorkOrder({ state, vehicleExpanded: false, activeWo: 'WO-A' })).toBe(false);
+    expect(shouldReturnToWorkOrder({ state: 'idle', vehicleExpanded: false, activeWo: 'WO-A' })).toBe(false);
+  });
+  it('needs an open work order', () =>
+    expect(shouldReturnToWorkOrder({ state: 'idle', vehicleExpanded: true, activeWo: null })).toBe(false));
 });
