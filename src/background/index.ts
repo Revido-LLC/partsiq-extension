@@ -1,6 +1,7 @@
 import { CONFIG } from '@lib/constants';
 import { dataUrlToBlob } from '@lib/image-utils';
 import { canCropOn } from '@lib/crop';
+import { pickOpenWorkOrder } from '@lib/autoflex';
 
 // Open sidebar when extension icon is clicked
 chrome.sidePanel
@@ -88,9 +89,9 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
     const opening = chrome.sidePanel.open({ tabId });
     const workOrderId = typeof msg.workOrderId === 'string' ? msg.workOrderId : null;
     if (workOrderId) {
-      void setTabWorkOrder(tabId, workOrderId).then(() =>
-        broadcastWorkOrder(workOrderId, msg.search === true),
-      );
+      void setTabWorkOrder(tabId, workOrderId)
+        .then(() => setLastAutoflexTab(tabId))
+        .then(() => broadcastWorkOrder(workOrderId, msg.search === true));
     }
     opening
       .then(() => sendResponse({ ok: true }))
@@ -137,6 +138,22 @@ function broadcastWorkOrder(workOrderId: string | null, search = false): void {
       .sendMessage({ type: 'work_order_active', workOrderId, plate, search })
       .catch(() => {/* side panel not open */}),
   );
+}
+
+async function getLastAutoflexTab(): Promise<number | undefined> {
+  const key = CONFIG.STORAGE_KEYS.LAST_AUTOFLEX_TAB;
+  const data = await chrome.storage.session.get(key);
+  return data[key] as number | undefined;
+}
+
+async function setLastAutoflexTab(tabId: number): Promise<void> {
+  await chrome.storage.session.set({ [CONFIG.STORAGE_KEYS.LAST_AUTOFLEX_TAB]: tabId });
+}
+
+/** Tells the side panel which work order is open in Autoflex, whatever tab is active. */
+async function broadcastOpenWorkOrder(search = false): Promise<void> {
+  const workOrderId = pickOpenWorkOrder(await getTabWorkOrders(), await activeTabId(), await getLastAutoflexTab());
+  broadcastWorkOrder(workOrderId, search);
 }
 
 async function activeTabId(): Promise<number | undefined> {
@@ -194,7 +211,10 @@ async function moveCropTo(tabId: number): Promise<void> {
 }
 
 chrome.tabs.onActivated.addListener(({ tabId }) => {
-  void getTabWorkOrders().then(map => broadcastWorkOrder(map[String(tabId)] ?? null));
+  void (async () => {
+    if ((await getTabWorkOrders())[String(tabId)]) await setLastAutoflexTab(tabId);
+    await broadcastOpenWorkOrder();
+  })();
   void moveCropTo(tabId);
 });
 
@@ -207,7 +227,7 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  void setTabWorkOrder(tabId, null);
+  void setTabWorkOrder(tabId, null).then(() => broadcastOpenWorkOrder());
 });
 
 // ── Message handler ──────────────────────────────────────────────────────────
@@ -223,7 +243,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (workOrderId && plate) await setWorkOrderPlate(workOrderId, plate);
         await setTabWorkOrder(tabId, workOrderId);
         if (!workOrderId) await chrome.action.setBadgeText({ tabId, text: '' });
-        if ((await activeTabId()) === tabId) broadcastWorkOrder(workOrderId);
+        else await setLastAutoflexTab(tabId);
+        // Any Autoflex tab (also in the background) may open or close the followed work order
+        await broadcastOpenWorkOrder();
       })();
       return false;
 
@@ -237,9 +259,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     case 'get_active_work_order':
       (async () => {
-        const tabId = await activeTabId();
-        const map = await getTabWorkOrders();
-        const workOrderId = tabId ? map[String(tabId)] ?? null : null;
+        const workOrderId = pickOpenWorkOrder(await getTabWorkOrders(), await activeTabId(), await getLastAutoflexTab());
         sendResponse({ workOrderId, plate: await plateOf(workOrderId) });
       })();
       return true;
