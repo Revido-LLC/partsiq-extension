@@ -15,7 +15,7 @@ import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import { aiPartsToCartItems, mergeCart } from '@lib/cart-utils';
-import { orderForOpenWorkOrder, workModeAfterLogin, shouldReturnToWorkOrder } from '@lib/autoflex';
+import { orderForOpenWorkOrder, workModeAfterLogin, shouldReturnToWorkOrder, isRepeatedWorkOrder } from '@lib/autoflex';
 import BubbleIframe from '@components/BubbleIframe';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
@@ -164,6 +164,8 @@ export default function Sidebar() {
       workOrderId?: string | null; plate?: string; search?: boolean;
     }) => {
       if (msg.type === 'work_order_active') {
+        // Tab switches re-send the followed work order: keep cart, finish screen and panel search
+        if (isRepeatedWorkOrder(activeWoRef.current, { workOrderId: msg.workOrderId ?? null, search: msg.search })) return;
         activeWoRef.current = msg.workOrderId ?? null;
         setActiveWo(msg.workOrderId ?? null);
         followOpenWorkOrderRef.current(msg.workOrderId ?? null, msg.plate ?? '');

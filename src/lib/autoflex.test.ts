@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder, isRepeatedWorkOrder, shouldForgetTabWorkOrder } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -145,7 +145,9 @@ describe('pickOpenWorkOrder', () => {
   const map = { '1': 'WO-A', '2': 'WO-B' };
   it('uses the active tab when it has a work order', () => expect(pickOpenWorkOrder(map, 2, 1)).toBe('WO-B'));
   it('prefers the last used Autoflex tab', () => expect(pickOpenWorkOrder(map, 9, 2)).toBe('WO-B'));
-  it('ignores the last tab when it no longer has a work order', () => expect(pickOpenWorkOrder({ '1': 'WO-A' }, 9, 2)).toBe('WO-A'));
+  it('falls back to another tab only when there is no last Autoflex tab', () => expect(pickOpenWorkOrder({ '1': 'WO-A' }, 9, undefined)).toBe('WO-A'));
+  it('keeps the last Autoflex tab empty instead of jumping to another tab', () =>
+    expect(pickOpenWorkOrder({ '1': 'WO-A' }, 9, 2)).toBeNull());
   it('returns null when no tab has a work order', () => expect(pickOpenWorkOrder({}, 9, 2)).toBeNull());
 });
 
@@ -159,4 +161,25 @@ describe('shouldReturnToWorkOrder', () => {
   });
   it('needs an open work order', () =>
     expect(shouldReturnToWorkOrder({ state: 'idle', vehicleExpanded: true, activeWo: null })).toBe(false));
+});
+
+describe('isRepeatedWorkOrder', () => {
+  it('ignores a re-broadcast of the work order already shown', () =>
+    expect(isRepeatedWorkOrder('WO-A', { workOrderId: 'wo-a', search: false })).toBe(true));
+  it('keeps an explicit search request', () =>
+    expect(isRepeatedWorkOrder('WO-A', { workOrderId: 'WO-A', search: true })).toBe(false));
+  it('handles a different or closed work order', () => {
+    expect(isRepeatedWorkOrder('WO-A', { workOrderId: 'WO-B' })).toBe(false);
+    expect(isRepeatedWorkOrder('WO-A', { workOrderId: null })).toBe(false);
+    expect(isRepeatedWorkOrder(null, { workOrderId: null })).toBe(true);
+  });
+});
+
+describe('shouldForgetTabWorkOrder', () => {
+  it('forgets the work order when its tab reloads or navigates', () =>
+    expect(shouldForgetTabWorkOrder({ status: 'loading' }, true)).toBe(true));
+  it('keeps it otherwise', () => {
+    expect(shouldForgetTabWorkOrder({ status: 'complete' }, true)).toBe(false);
+    expect(shouldForgetTabWorkOrder({ status: 'loading' }, false)).toBe(false);
+  });
 });

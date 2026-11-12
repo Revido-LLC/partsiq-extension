@@ -1,7 +1,7 @@
 import { CONFIG } from '@lib/constants';
 import { dataUrlToBlob } from '@lib/image-utils';
 import { canCropOn } from '@lib/crop';
-import { pickOpenWorkOrder } from '@lib/autoflex';
+import { pickOpenWorkOrder, shouldForgetTabWorkOrder } from '@lib/autoflex';
 
 // Open sidebar when extension icon is clicked
 chrome.sidePanel
@@ -227,7 +227,22 @@ chrome.tabs.onUpdated.addListener((tabId, info) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  void setTabWorkOrder(tabId, null).then(() => broadcastOpenWorkOrder());
+  void (async () => {
+    await setTabWorkOrder(tabId, null);
+    if ((await getLastAutoflexTab()) === tabId) {
+      await chrome.storage.session.remove(CONFIG.STORAGE_KEYS.LAST_AUTOFLEX_TAB);
+    }
+    await broadcastOpenWorkOrder();
+  })();
+});
+
+// F5, session expiry or navigating away: the tab's work order is gone until its banner reports again
+chrome.tabs.onUpdated.addListener((tabId, info) => {
+  void (async () => {
+    if (!shouldForgetTabWorkOrder(info, !!(await getTabWorkOrders())[String(tabId)])) return;
+    await setTabWorkOrder(tabId, null);
+    await broadcastOpenWorkOrder();
+  })();
 });
 
 // ── Message handler ──────────────────────────────────────────────────────────

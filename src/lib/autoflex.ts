@@ -117,7 +117,7 @@ export function workModeAfterLogin(
 
 /**
  * Work order the extension follows across tabs: the active tab's when it has one, else the
- * last used Autoflex tab's (if it still has one), else any tab's. Supplier tabs never clear it.
+ * last used Autoflex tab's (null if it shows none), else — that tab closed — any tab's. Supplier tabs never clear it.
  */
 export function pickOpenWorkOrder(
   tabWorkOrders: Record<string, string>,
@@ -125,9 +125,10 @@ export function pickOpenWorkOrder(
   lastAutoflexTabId: number | undefined,
 ): string | null {
   if (activeTabId !== undefined && tabWorkOrders[String(activeTabId)]) return tabWorkOrders[String(activeTabId)];
-  if (lastAutoflexTabId !== undefined && tabWorkOrders[String(lastAutoflexTabId)]) {
-    return tabWorkOrders[String(lastAutoflexTabId)];
-  }
+  // The last used Autoflex tab decides while it is open: when it reports no work order (closed
+  // the form, or the transient null while Servoy swaps forms) do not jump to another tab
+  if (lastAutoflexTabId !== undefined) return tabWorkOrders[String(lastAutoflexTabId)] ?? null;
+  // No last tab (it was closed): the lowest tab id that still shows a work order
   return Object.values(tabWorkOrders)[0] ?? null;
 }
 
@@ -141,4 +142,22 @@ export function shouldReturnToWorkOrder(s: {
   activeWo: string | null;
 }): boolean {
   return !!s.activeWo && s.state === 'idle' && s.vehicleExpanded;
+}
+
+/**
+ * A work_order_active broadcast for the work order the side panel already follows (tab switches
+ * re-send it). Ignoring it keeps the cart, the finish screen and the panel's search intact;
+ * an explicit search request (banner "Find") is never a repeat.
+ */
+export function isRepeatedWorkOrder(
+  current: string | null,
+  msg: { workOrderId: string | null; search?: boolean },
+): boolean {
+  if (msg.search === true) return false;
+  return (current ?? '').toLowerCase() === (msg.workOrderId ?? '').toLowerCase();
+}
+
+/** A tab that reloads or navigates away no longer shows its work order (its banner re-reports it). */
+export function shouldForgetTabWorkOrder(info: { status?: string }, hasWorkOrder: boolean): boolean {
+  return hasWorkOrder && info.status === 'loading';
 }
