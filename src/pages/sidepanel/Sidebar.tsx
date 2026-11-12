@@ -39,6 +39,8 @@ export default function Sidebar() {
   const [scanScreenshot, setScanScreenshot] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [finishOrder, setFinishOrder] = useState<Order | null>(null);
+  // Summary of the finished session, kept after cart/vehicle/order are cleared
+  const [finishSummary, setFinishSummary] = useState<{ sentCount: number; plate: string }>({ sentCount: 0, plate: '' });
   const [loginOverlay, setLoginOverlay] = useState(true);
   // Autoflex work order open in the active tab (drives the autoflex-panel iframe)
   const [activeWo, setActiveWo] = useState<string | null>(null);
@@ -391,6 +393,10 @@ export default function Sidebar() {
 
   const handleFinish = async () => {
     setFinishOrder(orderRef.current);
+    setFinishSummary({
+      sentCount: cartRef.current.filter(i => i.status === 'sent').length,
+      plate: orderRef.current?.plate || vehicleRef.current?.plate || '',
+    });
     setCartState([]);
     setVehicleState(null);
     setOrderState(null);
@@ -453,7 +459,16 @@ export default function Sidebar() {
   }
 
   if (state === 'finish') {
-    return <FinishState lang={lang} workMode={workMode} order={finishOrder} onNewQuote={handleNewQuote} />;
+    return (
+      <FinishState
+        lang={lang}
+        workMode={workMode}
+        order={finishOrder}
+        plate={finishSummary.plate}
+        sentCount={finishSummary.sentCount}
+        onNewQuote={handleNewQuote}
+      />
+    );
   }
 
   // idle / scanning / cart / fallback — all show the panel header

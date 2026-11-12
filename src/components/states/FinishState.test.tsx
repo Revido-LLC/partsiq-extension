@@ -213,3 +213,28 @@ describe('FinishState structure', () => {
     expect(container.querySelectorAll('a')).toHaveLength(0);
   });
 });
+
+// ── Summary card (visual unification 12/11) ──────────────────────────────────
+
+describe('FinishState summary', () => {
+  it('shows how many parts were sent', () => {
+    render(<FinishState lang="en" workMode="order" order={ORDER} sentCount={3} onNewQuote={vi.fn()} />);
+    expect(screen.getByText('3 parts sent.')).toBeInTheDocument();
+  });
+
+  it('uses the singular in Dutch', () => {
+    render(<FinishState lang="nl" workMode="order" order={ORDER} sentCount={1} onNewQuote={vi.fn()} />);
+    expect(screen.getByText('1 onderdeel verzonden.')).toBeInTheDocument();
+  });
+
+  it('hides the summary when nothing was sent', () => {
+    render(<FinishState lang="en" workMode="order" order={ORDER} sentCount={0} onNewQuote={vi.fn()} />);
+    expect(screen.queryByText(/parts? sent\./)).toBeNull();
+  });
+
+  it('shows the plate in the header', () => {
+    render(<FinishState lang="en" workMode="order" order={ORDER} plate="07-XXH-3" onNewQuote={vi.fn()} />);
+    expect(screen.getByText('07-XXH-3')).toBeInTheDocument();
+    expect(screen.getByText('Parts iQ')).toBeInTheDocument();
+  });
+});
