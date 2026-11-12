@@ -23,6 +23,11 @@ describe('OrderPanel', () => {
     expect(back).toHaveBeenCalledOnce();
   });
 
+  it('shows the order id when the order has no plate', () => {
+    render(<OrderPanel order={{ id: 'wo-1', plate: '' }} lang='en' onExpand={() => {}} />);
+    expect(screen.getByText('wo-1')).toBeInTheDocument();
+  });
+
   it('change order calls onExpand', () => {
     const expand = vi.fn();
     render(<OrderPanel order={null} lang="en" onExpand={expand} />);

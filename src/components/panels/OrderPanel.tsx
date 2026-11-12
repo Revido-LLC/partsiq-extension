@@ -15,6 +15,7 @@ export default function OrderPanel({ order, lang, onExpand, onBackToWorkOrder }:
   return (
     <PanelHeader
       plate={order?.plate}
+      fallbackLabel={order?.id}
       changeLabel={t.changeOrder}
       onChange={onExpand}
       backLabel={t.backToWorkOrder}

@@ -388,6 +388,8 @@ export default function Sidebar() {
   };
 
   const handleUpdateCart = async (items: CartItem[]) => {
+    // Keep the ref current right away: handleFinish may read it before React re-renders
+    cartRef.current = items;
     setCartState(items);
     await setCart(items);
   };
