@@ -768,3 +768,30 @@ describe('Manual add part form', () => {
     expect(newCart[0].status).toBe('pending');
   });
 });
+
+// ── WO panel style (visual unification 12/11) ────────────────────────────────
+
+describe('CartState WO panel style', () => {
+  it('shows the add-from-supplier card', () => {
+    render(<CartState {...defaultProps({ cart: [] })} />);
+    expect(screen.getByText('Add parts from a supplier')).toBeInTheDocument();
+    expect(screen.getByText('Open the supplier page and select the part.')).toBeInTheDocument();
+  });
+
+  it('sent items show a tag', () => {
+    render(<CartState {...defaultProps({ cart: [makeItem({ status: 'sent', checked: true })] })} />);
+    expect(screen.getByText('✓ Sent')).toHaveClass('bg-pq-tag');
+  });
+
+  it('truncates long part names', () => {
+    const name = 'Very long part name '.repeat(8);
+    render(<CartState {...defaultProps({ cart: [makeItem({ name })] })} />);
+    expect(screen.getByText(name.trim(), { normalizer: s => s.trim() })).toHaveClass('truncate');
+  });
+
+  it('footer keeps both actions', () => {
+    render(<CartState {...defaultProps({ cart: [makeItem({})] })} />);
+    expect(screen.getByRole('button', { name: /Clear unsent/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Finish search/ })).toBeInTheDocument();
+  });
+});

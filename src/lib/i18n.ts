@@ -34,6 +34,8 @@ const T = {
     scanError: 'Scan failed.',
     scanSupplierPage: 'Scan a supplier page instead',
     backToWorkOrder: 'Back to work order',
+    addFromSupplierTitle: 'Add parts from a supplier',
+    addFromSupplierHint: 'Open the supplier page and select the part.',
     removeUnsentConfirm: (count: number) =>
       `Remove ${count} unsent part${count === 1 ? '' : 's'}?`,
   },
@@ -70,6 +72,8 @@ const T = {
     scanError: 'Scannen mislukt.',
     scanSupplierPage: 'Liever een leverancierspagina scannen',
     backToWorkOrder: 'Terug naar werkorder',
+    addFromSupplierTitle: 'Onderdelen van een leverancier toevoegen',
+    addFromSupplierHint: 'Open de pagina van de leverancier en selecteer het onderdeel.',
     removeUnsentConfirm: (count: number) =>
       `${count} niet-verzonden onderdeel${count === 1 ? '' : 'en'} verwijderen?`,
   },
