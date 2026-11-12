@@ -15,7 +15,7 @@ import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import { aiPartsToCartItems, mergeCart } from '@lib/cart-utils';
-import { orderForOpenWorkOrder, workModeAfterLogin } from '@lib/autoflex';
+import { orderForOpenWorkOrder, workModeAfterLogin, shouldReturnToWorkOrder } from '@lib/autoflex';
 import BubbleIframe from '@components/BubbleIframe';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
@@ -152,6 +152,11 @@ export default function Sidebar() {
   const followOpenWorkOrderRef = useRef(followOpenWorkOrder);
   followOpenWorkOrderRef.current = followOpenWorkOrder;
 
+  // Back on the selection screen with a work order open in Autoflex: show its panel again
+  useEffect(() => {
+    if (shouldReturnToWorkOrder({ state, vehicleExpanded, activeWo })) setWoPanelHidden(false);
+  }, [state, vehicleExpanded, activeWo]);
+
   // ── chrome.runtime message listener ───────────────────────────────────────
   useEffect(() => {
     const handler = (msg: {
@@ -163,7 +168,8 @@ export default function Sidebar() {
         setActiveWo(msg.workOrderId ?? null);
         followOpenWorkOrderRef.current(msg.workOrderId ?? null, msg.plate ?? '');
         setWoSearch(msg.search === true);
-        if (msg.workOrderId) setWoPanelHidden(false);
+        // Only the banner's "Find" (explicit user action) brings the panel back mid-flow
+        if (msg.workOrderId && msg.search === true) setWoPanelHidden(false);
         return;
       }
       if (msg.type === 'crop_ready') {
