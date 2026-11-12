@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import { buildBubbleUrl, useBubbleMessages } from '@lib/iframe';
 import { CONFIG } from '@lib/constants';
-import type { BubbleMessage } from '@types/parts';
+import type { BubbleMessage } from '@app-types/parts';
 
 // ── buildBubbleUrl ──────────────────────────────────────────────────────────
 

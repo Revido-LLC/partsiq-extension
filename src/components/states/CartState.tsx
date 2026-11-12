@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Lang, CartItem, Vehicle, Order, WorkMode } from '@types/parts';
+import type { Lang, CartItem, Vehicle, Order, WorkMode } from '@app-types/parts';
 import { useT } from '@lib/i18n';
 import { CONFIG } from '@lib/constants';
 import Card from '@components/ui/Card';

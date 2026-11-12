@@ -1,4 +1,4 @@
-import type { Lang } from '@types/parts';
+import type { Lang } from '@app-types/parts';
 import { useT } from '@lib/i18n';
 import Card from '@components/ui/Card';
 import PillButton from '@components/ui/PillButton';

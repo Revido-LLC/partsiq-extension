@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Lang, WorkMode, SidebarState, CartItem, Vehicle, Order } from '@types/parts';
+import type { Lang, WorkMode, SidebarState, CartItem, Vehicle, Order } from '@app-types/parts';
 import {
   getAuthStatus, setAuthStatus,
   getLang, setLang,

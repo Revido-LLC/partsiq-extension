@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { BubbleMessage } from '@types/parts';
+import type { BubbleMessage } from '@app-types/parts';
 import { CONFIG } from '@lib/constants';
 
 export type BubblePage = keyof typeof CONFIG.BUBBLE_PAGES;

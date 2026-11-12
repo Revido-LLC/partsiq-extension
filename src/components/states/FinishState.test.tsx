@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import FinishState from './FinishState';
-import type { Order } from '@types/parts';
+import type { Order } from '@app-types/parts';
 import { CONFIG } from '@lib/constants';
 
 const BASE = CONFIG.BUBBLE_BASE_URL;

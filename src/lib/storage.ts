@@ -1,4 +1,4 @@
-import type { CartItem, Lang, WorkMode, Vehicle, Order } from '@types/parts';
+import type { CartItem, Lang, WorkMode, Vehicle, Order } from '@app-types/parts';
 import { CONFIG } from '@lib/constants';
 
 const K = CONFIG.STORAGE_KEYS;

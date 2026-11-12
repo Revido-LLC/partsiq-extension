@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { AiPart } from '@lib/ai';
-import type { CartItem } from '@types/parts';
+import type { CartItem } from '@app-types/parts';
 import { aiPartsToCartItems, mergeCart } from './cart-utils';
 
 // ── Helpers ────────────────────────────────────────────────────────────────

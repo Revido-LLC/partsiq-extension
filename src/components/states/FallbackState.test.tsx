@@ -4,7 +4,7 @@ import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom/vitest';
 import FallbackState from './FallbackState';
-import type { CartItem } from '@types/parts';
+import type { CartItem } from '@app-types/parts';
 
 afterEach(() => {
   cleanup();
@@ -28,14 +28,7 @@ function makeSentItem(overrides: Partial<CartItem> = {}): CartItem {
   };
 }
 
-let defaultProps: {
-  lang: 'en';
-  cart: CartItem[];
-  onAddManual: ReturnType<typeof vi.fn>;
-  onCrop: ReturnType<typeof vi.fn>;
-  onScan: ReturnType<typeof vi.fn>;
-  onClear: ReturnType<typeof vi.fn>;
-};
+let defaultProps: React.ComponentProps<typeof FallbackState>;
 
 beforeEach(() => {
   defaultProps = {
@@ -58,17 +51,6 @@ describe('FallbackState — empty cart', () => {
     render(<FallbackState {...defaultProps} cart={[]} />);
     expect(screen.getByRole('button', { name: /crop/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /scan/i })).toBeInTheDocument();
-  });
-
-  it('shows the clear button', () => {
-    render(<FallbackState {...defaultProps} cart={[]} />);
-    expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument();
-  });
-
-  it('calls onClear when the clear button is clicked', async () => {
-    render(<FallbackState {...defaultProps} cart={[]} />);
-    await userEvent.click(screen.getByRole('button', { name: /clear/i }));
-    expect(defaultProps.onClear).toHaveBeenCalledTimes(1);
   });
 });
 

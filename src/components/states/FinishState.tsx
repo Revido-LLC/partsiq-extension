@@ -1,4 +1,4 @@
-import type { Lang, WorkMode, Order } from '@types/parts';
+import type { Lang, WorkMode, Order } from '@app-types/parts';
 import { useT } from '@lib/i18n';
 import { CONFIG } from '@lib/constants';
 import Card from '@components/ui/Card';

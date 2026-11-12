@@ -1,4 +1,4 @@
-import type { Lang, Order } from '@types/parts';
+import type { Lang, Order } from '@app-types/parts';
 import { useT } from '@lib/i18n';
 import PanelHeader from './PanelHeader';
 

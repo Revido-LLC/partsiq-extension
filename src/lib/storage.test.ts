@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CONFIG } from '@lib/constants';
-import type { CartItem, Vehicle, Order } from '@types/parts';
+import type { CartItem, Vehicle, Order } from '@app-types/parts';
 
 const K = CONFIG.STORAGE_KEYS;
 

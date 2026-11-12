@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Lang, CartItem } from '@types/parts';
+import type { Lang, CartItem } from '@app-types/parts';
 import { useT } from '@lib/i18n';
 import Card from '@components/ui/Card';
 import PillButton from '@components/ui/PillButton';

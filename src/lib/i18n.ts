@@ -1,4 +1,4 @@
-import type { Lang } from '@types/parts';
+import type { Lang } from '@app-types/parts';
 
 const T = {
   en: {

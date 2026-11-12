@@ -1,5 +1,5 @@
 import type { AiPart } from '@lib/ai';
-import type { CartItem } from '@types/parts';
+import type { CartItem } from '@app-types/parts';
 
 /**
  * Converts AI-extracted parts into CartItem objects ready for the cart.

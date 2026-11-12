@@ -1,4 +1,4 @@
-import type { Lang, Vehicle } from '@types/parts';
+import type { Lang, Vehicle } from '@app-types/parts';
 import { useT } from '@lib/i18n';
 import PanelHeader from './PanelHeader';
 
