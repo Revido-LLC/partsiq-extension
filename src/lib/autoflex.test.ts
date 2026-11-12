@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -123,5 +123,20 @@ describe('orderForOpenWorkOrder', () => {
   });
   it('keeps a plate the order already has', () => {
     expect(orderForOpenWorkOrder({ id: 'A', plate: '1-AB-23' }, 'A', '98-ZPZ-7')).toBeNull();
+  });
+});
+
+describe('workModeAfterLogin', () => {
+  // Bubble reports autoflex_connected per user; the open work order is per tab (from the banner)
+  it('is order mode when a work order is open in Autoflex, even if Bubble says Autoflex is not connected', () => {
+    expect(workModeAfterLogin(false, 'C5AB2A62-FF20-48A2-90B2-8C6771B3A766')).toBe('order');
+  });
+  it('is order mode when Autoflex is connected', () => {
+    expect(workModeAfterLogin(true, null)).toBe('order');
+    expect(workModeAfterLogin(true, 'C5AB2A62-FF20-48A2-90B2-8C6771B3A766')).toBe('order');
+  });
+  it('is vehicle mode without an open work order and without Autoflex', () => {
+    expect(workModeAfterLogin(false, null)).toBe('vehicle');
+    expect(workModeAfterLogin(false, '')).toBe('vehicle');
   });
 });

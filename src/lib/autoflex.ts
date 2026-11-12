@@ -102,3 +102,15 @@ export function orderForOpenWorkOrder(
   }
   return { id: openWorkOrderId, plate };
 }
+
+/**
+ * Work mode after Parts iQ login. Bubble's autoflex_connected is per user, but a work order
+ * open in Autoflex (reported by the banner for the active tab) always means order mode:
+ * scan/crop parts go to that work order, never to a car picked in vehicle mode.
+ */
+export function workModeAfterLogin(
+  autoflexConnected: boolean,
+  openWorkOrderId: string | null,
+): 'order' | 'vehicle' {
+  return autoflexConnected || openWorkOrderId ? 'order' : 'vehicle';
+}

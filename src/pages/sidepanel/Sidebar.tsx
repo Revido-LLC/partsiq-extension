@@ -15,7 +15,7 @@ import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import { aiPartsToCartItems, mergeCart } from '@lib/cart-utils';
-import { orderForOpenWorkOrder } from '@lib/autoflex';
+import { orderForOpenWorkOrder, workModeAfterLogin } from '@lib/autoflex';
 import BubbleIframe from '@components/BubbleIframe';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
@@ -58,6 +58,8 @@ export default function Sidebar() {
   vehicleRef.current = vehicle;
   const orderRef = useRef(order);
   orderRef.current = order;
+  const activeWoRef = useRef(activeWo);
+  activeWoRef.current = activeWo;
 
   // Ref to processScan so the chrome.runtime listener always calls the current version
   const processScanRef = useRef<(base64: string, isCrop?: boolean) => Promise<void>>(async () => {});
@@ -91,6 +93,7 @@ export default function Sidebar() {
       try {
         const res = await chrome.runtime.sendMessage({ type: 'get_active_work_order' }) as
           { workOrderId?: string | null; plate?: string } | undefined;
+        activeWoRef.current = res?.workOrderId ?? null;
         setActiveWo(res?.workOrderId ?? null);
         followOpenWorkOrderRef.current(res?.workOrderId ?? null, res?.plate ?? '');
       } catch {/* background not ready */}
@@ -156,6 +159,7 @@ export default function Sidebar() {
       workOrderId?: string | null; plate?: string; search?: boolean;
     }) => {
       if (msg.type === 'work_order_active') {
+        activeWoRef.current = msg.workOrderId ?? null;
         setActiveWo(msg.workOrderId ?? null);
         followOpenWorkOrderRef.current(msg.workOrderId ?? null, msg.plate ?? '');
         setWoSearch(msg.search === true);
@@ -205,7 +209,8 @@ export default function Sidebar() {
       const rawLang = msg.language as string;
       const language: Lang = rawLang === 'nl' ? 'nl' : 'en';
       const autoflexConnected = (msg.autoflex_connected as string) === 'yes';
-      const mode: WorkMode = autoflexConnected ? 'order' : 'vehicle';
+      // A work order open in Autoflex keeps order mode (followOpenWorkOrder already set its order)
+      const mode: WorkMode = workModeAfterLogin(autoflexConnected, activeWoRef.current);
 
       setLangState(language);
       setWorkModeState(mode);
