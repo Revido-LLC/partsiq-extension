@@ -463,6 +463,7 @@ export default function Sidebar() {
         order={order}
         lang={lang}
         onExpand={() => { setIframeReady(false); setVehicleExpanded(true); setState('idle'); }}
+        onBackToWorkOrder={activeWo ? () => setWoPanelHidden(false) : undefined}
       />
     )
     : (
@@ -478,6 +479,7 @@ export default function Sidebar() {
           setVehicleExpanded(true);
           setState('idle');
         }}
+        onBackToWorkOrder={activeWo ? () => setWoPanelHidden(false) : undefined}
       />
     );
 
@@ -502,17 +504,9 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#F0F0F0]">
-      {activeWo && (
-        <button
-          type="button"
-          onClick={() => setWoPanelHidden(false)}
-          className="m-2 rounded-full text-xs font-semibold text-[#473150] bg-[#00C6B2] py-2"
-        >
-          {t.backToWorkOrder}
-        </button>
-      )}
-      {!vehicleExpanded && panelHeader}
+    <div className="flex flex-col h-screen gap-2 bg-pq-page p-2.5">
+      {/* Header card (plate, back to the work order, change order/vehicle) on every scan/cart screen */}
+      {panelHeader}
 
       {state === 'scanning' && (
         <div className="flex-1">
