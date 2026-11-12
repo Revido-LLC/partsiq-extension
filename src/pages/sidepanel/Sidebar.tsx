@@ -24,6 +24,7 @@ import FallbackState from '@components/states/FallbackState';
 import FinishState from '@components/states/FinishState';
 import VehiclePanel from '@components/panels/VehiclePanel';
 import OrderPanel from '@components/panels/OrderPanel';
+import PillButton from '@components/ui/PillButton';
 
 export default function Sidebar() {
   const [state, setState] = useState<SidebarState>('checking');
@@ -426,11 +427,11 @@ export default function Sidebar() {
   // ── Render ─────────────────────────────────────────────────────────────────
   if (state === 'checking' || state === 'login') {
     return (
-      <div className="relative h-full bg-[#F0F0F0]">
+      <div className="relative h-full bg-pq-page">
         <LoginState onLoad={handleLoginIframeLoad} />
         {loginOverlay && (
           <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
-            <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-pq-teal/30 border-t-pq-teal rounded-full animate-spin" />
           </div>
         )}
       </div>
@@ -440,20 +441,22 @@ export default function Sidebar() {
   // Autoflex work order open in the active tab: show the Parts iQ panel for it
   if (activeWo && !woPanelHidden) {
     return (
-      <div className="flex flex-col h-screen bg-[#F0F0F0]">
+      <div className="flex flex-col h-screen bg-pq-page">
         <BubbleIframe
           key={activeWo}
           src={buildBubbleUrl('autoflexPanel', { wo: activeWo, search: woSearch ? '1' : undefined })}
           title="Parts iQ – Autoflex"
           className="flex-1 w-full"
         />
-        <button
-          type="button"
-          onClick={() => setWoPanelHidden(true)}
-          className="m-2 rounded-full text-xs font-semibold text-[#473150] bg-white py-2"
-        >
-          {t.scanSupplierPage}
-        </button>
+        <div className="shrink-0 border-t border-pq-line bg-white p-2">
+          <PillButton variant="secondary" onClick={() => setWoPanelHidden(true)} className="w-full py-2">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            {t.scanSupplierPage}
+          </PillButton>
+        </div>
       </div>
     );
   }
@@ -503,7 +506,7 @@ export default function Sidebar() {
   //  when switching between order and vehicle mode)
   if (state === 'idle' && vehicleExpanded) {
     return (
-      <div className={`relative flex flex-col h-screen bg-[#F0F0F0]${!autoflex ? ' pt-5' : ''}`}>
+      <div className={`relative flex flex-col h-screen bg-pq-page${!autoflex ? ' pt-5' : ''}`}>
         <BubbleIframe
           src={buildBubbleUrl('extension')}
           title="Select"
@@ -511,7 +514,7 @@ export default function Sidebar() {
         />
         {!iframeReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-white">
-            <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-pq-teal/30 border-t-pq-teal rounded-full animate-spin" />
           </div>
         )}
       </div>
