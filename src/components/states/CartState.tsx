@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Lang, CartItem, Vehicle, Order, WorkMode } from '@types/parts';
+import type { Lang, CartItem, Vehicle, Order, WorkMode } from '@app-types/parts';
 import { useT } from '@lib/i18n';
 import { CONFIG } from '@lib/constants';
+import Card from '@components/ui/Card';
+import PillButton from '@components/ui/PillButton';
+import Tag from '@components/ui/Tag';
 
 interface Props {
   lang: Lang;
@@ -11,13 +14,16 @@ interface Props {
   workMode: WorkMode;
   onScan: () => void;
   onCrop: () => void;
+  /** Shown under the hint when Crop/Scan was clicked outside a supplier page */
+  notice?: string | null;
+  onDismissNotice?: () => void;
   onUpdateCart: (items: CartItem[]) => Promise<void>;
   onFinish: () => void;
 }
 
 export default function CartState({
   lang, cart, vehicle, order, workMode,
-  onScan, onCrop, onUpdateCart, onFinish,
+  onScan, onCrop, notice, onDismissNotice, onUpdateCart, onFinish,
 }: Props) {
   const t = useT(lang);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -273,65 +279,73 @@ export default function CartState({
     })();
   };
 
+  const iconBtn = 'flex h-[22px] w-[22px] items-center justify-center rounded-md bg-pq-page text-pq-muted hover:text-pq-ink transition-colors';
+  const pillInput = 'border border-pq-line rounded-full px-3.5 py-1.5 text-[13px] w-full text-pq-muted bg-white outline-none focus:border-pq-teal transition-colors';
+
   return (
-    <div className="relative flex flex-col h-full bg-[#F0F0F0]">
+    <div className="relative flex flex-col h-full gap-2">
       {/* Scan actions */}
-      <div className="flex gap-2 px-3 py-2 border-b border-[#E6E6E6] shrink-0">
-        <button
-          onClick={onCrop}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 3 6 6 3 6"/>
-            <polyline points="18 3 18 6 21 6"/>
-            <polyline points="6 21 6 18 3 18"/>
-            <polyline points="18 21 18 18 21 18"/>
-            <rect x="6" y="6" width="12" height="12" rx="1"/>
-          </svg>
-          {t.crop}
-        </button>
-        <button
-          onClick={onScan}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-[#E6E6E6] text-black text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-          {t.scan}
-        </button>
-      </div>
+      <Card className="shrink-0">
+        <span className="text-sm font-semibold text-black">{t.addFromSupplierTitle}</span>
+        <span className="text-[13px] font-medium text-pq-muted">{t.addFromSupplierHint}</span>
+        {notice && (
+          <div role="status" className="flex items-start gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[12px] font-medium text-amber-800">
+            <span className="flex-1">{notice}</span>
+            {onDismissNotice && (
+              <button type="button" onClick={onDismissNotice} className="shrink-0 underline hover:text-amber-950">
+                {t.cancel}
+              </button>
+            )}
+          </div>
+        )}
+        <div className="flex gap-2 pt-0.5">
+          <PillButton variant="primary" onClick={onCrop} className="flex-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 3 6 6 3 6"/>
+              <polyline points="18 3 18 6 21 6"/>
+              <polyline points="6 21 6 18 3 18"/>
+              <polyline points="18 21 18 18 21 18"/>
+              <rect x="6" y="6" width="12" height="12" rx="1"/>
+            </svg>
+            {t.crop}
+          </PillButton>
+          <PillButton variant="secondary" onClick={onScan} className="flex-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            {t.scan}
+          </PillButton>
+        </div>
+      </Card>
+
       {/* Cart items */}
-      <div className="flex-1 overflow-y-auto scrollbar-hidden">
+      <div className="flex-1 overflow-y-auto scrollbar-hidden flex flex-col gap-2">
         {cart.map(item => {
           const disabled = !item.oem.trim() || item.status === 'sending';
           const isSent = item.status === 'sent';
           const isEditing = editingId === item.id;
 
           return (
-            <div key={item.id} className="border-b border-[#E6E6E6] px-3 py-2.5">
+            <Card key={item.id} className="shrink-0">
               <div className="flex items-start gap-2">
                 <input
                   type="checkbox"
                   checked={item.checked}
                   disabled={disabled}
                   onChange={() => handleCheck(item)}
-                  className="mt-0.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed accent-[#00C6B2]"
+                  className="mt-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed accent-pq-teal"
                 />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-medium text-[#525252] truncate flex-1">{item.name}</span>
-                    {item.status === 'sending' && (
-                      <span className="text-xs text-[#525252] opacity-50 shrink-0">{t.sending}</span>
-                    )}
-                    {item.status === 'sent' && (
-                      <span className="text-xs text-[#00C6B2] font-medium shrink-0">{t.sent}</span>
-                    )}
+                <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-semibold text-black truncate flex-1">{item.name}</span>
+                    {item.status === 'sending' && <span className="shrink-0"><Tag tone="neutral">{t.sending}</Tag></span>}
+                    {item.status === 'sent' && <span className="shrink-0"><Tag tone="purple">{t.sent}</Tag></span>}
                   </div>
 
                   {/* OEM */}
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-xs text-[#525252] opacity-60">{t.partNumber}:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-pq-muted opacity-70">{t.partNumber}:</span>
                     {isEditing ? (
                       <input
                         autoFocus
@@ -339,152 +353,114 @@ export default function CartState({
                         onChange={e => setEditValue(e.target.value)}
                         onBlur={() => commitOemEdit(item.id)}
                         onKeyDown={e => { if (e.key === 'Enter') commitOemEdit(item.id); }}
-                        className="text-xs border-b border-[#00C6B2] outline-none flex-1 min-w-0"
+                        className="text-xs border-b border-pq-teal outline-none flex-1 min-w-0"
                       />
                     ) : (
-                      <span className="text-xs text-[#525252] flex-1 truncate">
-                        {item.oem || <span className="text-red-400 italic">missing</span>}
+                      <span className="text-xs font-medium text-pq-muted flex-1 truncate">
+                        {item.oem || <span className="text-pq-warn italic">missing</span>}
                       </span>
                     )}
                   </div>
 
-                  {/* Meta */}
-                  <div className="flex gap-2 mt-0.5 text-xs text-[#525252] opacity-50">
-                    {item.price != null && <span>€{item.price}</span>}
-                    {item.deliveryDays != null && <span>{item.deliveryDays}d</span>}
+                  {/* Meta: supplier · delivery · price */}
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-pq-muted min-w-0">
                     {item.supplier && <span className="truncate">{item.supplier}</span>}
+                    {item.deliveryDays != null && <span className="shrink-0">· {item.deliveryDays}d</span>}
+                    {item.price != null && <span className="shrink-0 font-semibold text-black">· €{item.price}</span>}
                   </div>
 
                   {item.status === 'error' && item.errorMsg && (
-                    <p className="text-xs text-red-500 mt-0.5">{item.errorMsg}</p>
+                    <span className="self-start"><Tag tone="amber">{item.errorMsg}</Tag></span>
                   )}
                 </div>
 
-                {/* Action buttons column */}
+                {/* Actions */}
                 {!isSent && (
-                  <div className="flex flex-col items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="text-[#00C6B2] hover:opacity-70 transition-opacity"
-                      title="Remove"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {!isEditing && (
-                      <button
-                        onClick={() => handleOemEdit(item)}
-                        className="text-[#00C6B2] hover:opacity-70 transition-opacity"
-                        title="Edit part number"
-                      >
+                      <button onClick={() => handleOemEdit(item)} className={iconBtn} title="Edit part number">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
                       </button>
                     )}
+                    <button onClick={() => removeItem(item.id)} className={iconBtn} title="Remove">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
           );
         })}
 
         {/* Manual add */}
-        <div className="px-3 py-2 border-b border-[#E6E6E6]">
-          {showManualForm ? (
+        {showManualForm ? (
+          <Card className="shrink-0">
             <form onSubmit={handleAddManual} className="flex flex-col gap-1.5">
-              <input
-                name="name"
-                placeholder={t.partName}
-                className="border border-[#E6E6E6] rounded-full px-3 py-1.5 text-xs w-full text-[#525252] outline-none focus:border-[#00C6B2] transition-colors"
-                required
-              />
-              <input
-                name="oem"
-                placeholder={t.partNumberLabel}
-                className="border border-[#E6E6E6] rounded-full px-3 py-1.5 text-xs w-full text-[#525252] outline-none focus:border-[#00C6B2] transition-colors"
-              />
+              <input name="name" placeholder={t.partName} className={pillInput} required />
+              <input name="oem" placeholder={t.partNumberLabel} className={pillInput} />
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowManualForm(false)}
-                  className="flex-1 px-3 py-1.5 bg-white border border-[#E6E6E6] text-[#525252] text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
-                >
+                <PillButton variant="secondary" onClick={() => setShowManualForm(false)} className="flex-1">
                   {t.cancel}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-3 py-1.5 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
-                >
+                </PillButton>
+                <PillButton variant="primary" type="submit" className="flex-1">
                   {t.addPart}
-                </button>
+                </PillButton>
               </div>
             </form>
-          ) : (
-            <button
-              onClick={() => setShowManualForm(true)}
-              className="text-xs text-[#00C6B2] font-medium hover:underline"
-            >
-              {t.addManually}
-            </button>
-          )}
-        </div>
+          </Card>
+        ) : (
+          <button
+            onClick={() => setShowManualForm(true)}
+            className="self-start px-1 text-[13px] text-pq-teal font-medium hover:underline"
+          >
+            {t.addManually}
+          </button>
+        )}
       </div>
 
       {/* Clear confirm dialog */}
       {showClearConfirm && (
         <div className="absolute inset-0 flex items-end justify-center bg-black/20 z-10">
-          <div className="w-full bg-white border-t border-[#E6E6E6] px-4 py-4 flex flex-col gap-3">
-            <p className="text-sm font-medium text-[#473150] text-center">
+          <Card className="w-full gap-3 px-4 py-4">
+            <p className="text-sm font-semibold text-pq-ink text-center">
               {t.removeUnsentConfirm(cart.filter(i => i.status === 'pending' || i.status === 'error').length)}
             </p>
             <div className="flex gap-2">
-              <button
-                onClick={() => setShowClearConfirm(false)}
-                className="flex-1 px-3 py-2 bg-white border border-[#E6E6E6] text-[#525252] text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
-              >
+              <PillButton variant="secondary" onClick={() => setShowClearConfirm(false)} className="flex-1">
                 {t.cancel}
-              </button>
-              <button
-                onClick={handleConfirmClear}
-                className="flex-1 px-3 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
-              >
+              </PillButton>
+              <PillButton variant="primary" onClick={handleConfirmClear} className="flex-1">
                 {t.clearUnsent}
-              </button>
+              </PillButton>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Footer */}
-      <div className="border-t border-[#E6E6E6] px-3 py-2.5 shrink-0">
-        <div className="flex gap-2">
-          <button
-            onClick={handleClearUnsent}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-[#E6E6E6] text-[#525252] text-xs font-normal rounded-full hover:bg-gray-50 transition-colors"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="3 6 5 6 21 6"/>
-              <path d="M19 6l-1 14H6L5 6"/>
-              <path d="M10 11v6M14 11v6"/>
-              <path d="M9 6V4h6v2"/>
-            </svg>
-            {t.clearUnsent}
-          </button>
-          <button
-            onClick={handleFinish}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-[#00C6B2] text-[#473150] text-xs font-semibold rounded-full hover:opacity-90 transition-opacity"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-            {t.finishSearch}
-          </button>
-        </div>
-      </div>
+      <Card compact className="shrink-0 flex-row flex-wrap gap-2">
+        <PillButton variant="secondary" onClick={handleClearUnsent} className="flex-1 py-2">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14H6L5 6"/>
+            <path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4h6v2"/>
+          </svg>
+          {t.clearUnsent}
+        </PillButton>
+        <PillButton variant="primary" onClick={handleFinish} className="flex-1 py-2">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          {t.finishSearch}
+        </PillButton>
+      </Card>
     </div>
   );
 }

@@ -1,26 +1,25 @@
-import type { Lang, Order } from '@types/parts';
+import type { Lang, Order } from '@app-types/parts';
 import { useT } from '@lib/i18n';
+import PanelHeader from './PanelHeader';
 
 interface Props {
   order: Order | null;
   lang: Lang;
   onExpand: () => void;
+  /** Set only when an Autoflex work order is open: link back to its panel */
+  onBackToWorkOrder?: () => void;
 }
 
-export default function OrderPanel({ order, lang, onExpand }: Props) {
+export default function OrderPanel({ order, lang, onExpand, onBackToWorkOrder }: Props) {
   const t = useT(lang);
-
   return (
-    <div className="flex items-center justify-between px-3 py-2 bg-white border-b border-[#E6E6E6] shrink-0">
-      <span className="font-medium text-sm text-[#525252]">
-        {order?.plate || order?.id || '—'}
-      </span>
-      <button
-        onClick={onExpand}
-        className="text-xs text-[#00C6B2] font-medium hover:underline ml-2"
-      >
-        {t.changeOrder}
-      </button>
-    </div>
+    <PanelHeader
+      plate={order?.plate}
+      fallbackLabel={order?.id}
+      changeLabel={t.changeOrder}
+      onChange={onExpand}
+      backLabel={t.backToWorkOrder}
+      onBack={onBackToWorkOrder}
+    />
   );
 }

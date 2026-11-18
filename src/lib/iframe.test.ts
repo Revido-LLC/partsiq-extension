@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, cleanup } from '@testing-library/react';
 import { buildBubbleUrl, useBubbleMessages } from '@lib/iframe';
 import { CONFIG } from '@lib/constants';
-import type { BubbleMessage } from '@types/parts';
+import type { BubbleMessage } from '@app-types/parts';
 
 // ── buildBubbleUrl ──────────────────────────────────────────────────────────
 
@@ -224,5 +224,25 @@ describe('useBubbleMessages', () => {
       expect(secondCb).toHaveBeenCalledOnce();
       expect(firstCb).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('buildBubbleUrl with params', () => {
+  it('adds the work order to the autoflex panel URL', () => {
+    expect(buildBubbleUrl('autoflexPanel', { wo: 'ABC' })).toBe(
+      `${CONFIG.BUBBLE_BASE_URL}/autoflex-panel?wo=ABC`,
+    );
+  });
+
+  it('skips empty params', () => {
+    expect(buildBubbleUrl('autoflexPanel', { wo: 'ABC', search: undefined })).toBe(
+      `${CONFIG.BUBBLE_BASE_URL}/autoflex-panel?wo=ABC`,
+    );
+  });
+
+  it('keeps source=extension on login and appends extra params', () => {
+    expect(buildBubbleUrl('login', { wo: 'ABC' })).toBe(
+      `${CONFIG.BUBBLE_BASE_URL}${CONFIG.BUBBLE_PAGES.login}?source=extension&wo=ABC`,
+    );
   });
 });

@@ -1,15 +1,22 @@
-import type { Lang, WorkMode, Order } from '@types/parts';
+import type { Lang, WorkMode, Order } from '@app-types/parts';
 import { useT } from '@lib/i18n';
 import { CONFIG } from '@lib/constants';
+import Card from '@components/ui/Card';
+import Plate from '@components/ui/Plate';
+import PillButton from '@components/ui/PillButton';
 
 interface Props {
   lang: Lang;
   workMode: WorkMode;
   order: Order | null;
+  /** Plate of the finished order/vehicle (snapshot taken before the session is cleared) */
+  plate?: string;
+  /** Parts sent in the finished session (snapshot) */
+  sentCount?: number;
   onNewQuote: () => void;
 }
 
-export default function FinishState({ lang, workMode, order, onNewQuote }: Props) {
+export default function FinishState({ lang, workMode, order, plate, sentCount = 0, onNewQuote }: Props) {
   const t = useT(lang);
   const dashUrl = workMode === 'order' && order
     ? `${CONFIG.BUBBLE_BASE_URL}/dash/autoflex//sourced-parts?work-order-id=${order.id}`
@@ -18,21 +25,27 @@ export default function FinishState({ lang, workMode, order, onNewQuote }: Props
       : `${CONFIG.BUBBLE_BASE_URL}/dash/parts`;
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 px-4 text-center bg-[#F0F0F0]">
-      <div className="text-3xl text-[#00C6B2]">✓</div>
-      <p className="text-sm font-medium text-[#525252]">{t.searchFinished}</p>
-      <button
-        onClick={() => { void chrome.tabs.update({ url: dashUrl }).catch(() => {}); }}
-        className="px-4 py-2 border border-[#00C6B2] text-[#00C6B2] text-xs font-medium rounded-full hover:bg-[#F0FDFB] transition-colors"
-      >
-        {t.checkStatus}
-      </button>
-      <button
-        onClick={onNewQuote}
-        className="px-6 py-2 bg-[#00C6B2] text-[#473150] text-sm font-semibold rounded-full hover:opacity-90 transition-opacity"
-      >
-        {t.newQuote}
-      </button>
+    <div className="flex flex-col h-full gap-2 bg-pq-page p-2.5">
+      <Card className="shrink-0 flex-row items-center gap-2">
+        <span className="text-base font-bold text-black">Parts iQ</span>
+        <span className="flex-1" />
+        <Plate plate={plate} />
+      </Card>
+
+      <Card className="items-center gap-2.5 px-4 py-6 text-center">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pq-ok-bg text-2xl text-pq-teal">✓</div>
+        <p className="text-base font-bold text-black">{t.searchFinished}</p>
+        {sentCount > 0 && <p className="text-[13px] font-medium text-pq-muted">{t.partsSent(sentCount)}</p>}
+        <PillButton variant="primary" onClick={onNewQuote} className="w-full py-2">
+          {t.newQuote}
+        </PillButton>
+        <button
+          onClick={() => { void chrome.tabs.update({ url: dashUrl }).catch(() => {}); }}
+          className="text-[13px] font-medium text-pq-teal hover:underline"
+        >
+          {t.checkStatus}
+        </button>
+      </Card>
     </div>
   );
 }

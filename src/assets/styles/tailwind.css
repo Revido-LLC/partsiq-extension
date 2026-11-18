@@ -3,6 +3,20 @@
 
 @theme {
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+    /* Parts iQ tokens — measured from the Autoflex WO panel (Bubble autoflex-panel, 12/11/2026) */
+    --color-pq-page: #F0F0F0;
+    --color-pq-line: #E6E6E6;
+    --color-pq-teal: #00C6B2;
+    --color-pq-ink: #473150;
+    --color-pq-muted: #525252;
+    --color-pq-tag: #E6E1EA;
+    --color-pq-ok-bg: #E6F9F7;
+    --color-pq-ok: #008274;
+    --color-pq-warn-bg: #FFF3D6;
+    --color-pq-warn: #8A5A00;
+    --color-pq-plate-blue: rgb(4, 73, 163);
+    --color-pq-plate-yellow: rgb(243, 198, 58);
     --animate-spin-slow: spin 20s linear infinite;
 
     @keyframes spin {

@@ -4,7 +4,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { useState } from 'react';
 import '@testing-library/jest-dom/vitest';
 import CartState from './CartState';
-import type { CartItem, Vehicle, Order } from '@types/parts';
+import type { CartItem, Vehicle, Order } from '@app-types/parts';
 import { CONFIG } from '@lib/constants';
 
 // ── Factory ───────────────────────────────────────────────────────────────────
@@ -153,13 +153,13 @@ describe('handleCheck — sends a pending item', () => {
 
     await waitFor(() => {
       const sentCall = onUpdateCart.mock.calls.find(
-        ([items]: [CartItem[]]) => items.some(i => i.status === 'sent'),
+        (call) => (call[0] as CartItem[]).some(i => i.status === 'sent'),
       );
       expect(sentCall).toBeDefined();
     });
 
     const sentCall = onUpdateCart.mock.calls.find(
-      ([items]: [CartItem[]]) => items.some(i => i.status === 'sent'),
+      (call) => (call[0] as CartItem[]).some(i => i.status === 'sent'),
     );
     const sentItem = (sentCall![0] as CartItem[]).find(i => i.id === 'test-1')!;
     expect(sentItem.status).toBe('sent');
@@ -177,13 +177,13 @@ describe('handleCheck — sends a pending item', () => {
 
     await waitFor(() => {
       const sentCall = onUpdateCart.mock.calls.find(
-        ([items]: [CartItem[]]) => items.some(i => i.status === 'sent'),
+        (call) => (call[0] as CartItem[]).some(i => i.status === 'sent'),
       );
       expect(sentCall).toBeDefined();
     });
 
     const sentCall = onUpdateCart.mock.calls.find(
-      ([items]: [CartItem[]]) => items.some(i => i.status === 'sent'),
+      (call) => (call[0] as CartItem[]).some(i => i.status === 'sent'),
     );
     const sentItem = (sentCall![0] as CartItem[]).find(i => i.id === 'test-1')!;
     expect(sentItem.bubblePartId).toBe('resp-id-99');
@@ -203,7 +203,7 @@ describe('handleCheck — fetch failure on send', () => {
 
     await waitFor(() => {
       const errorCall = onUpdateCart.mock.calls.find(
-        ([items]: [CartItem[]]) => items.some(i => i.status === 'error'),
+        (call) => (call[0] as CartItem[]).some(i => i.status === 'error'),
       );
       expect(errorCall).toBeDefined();
     });
@@ -219,13 +219,13 @@ describe('handleCheck — fetch failure on send', () => {
 
     await waitFor(() => {
       const errorCall = onUpdateCart.mock.calls.find(
-        ([items]: [CartItem[]]) => items.some(i => i.status === 'error'),
+        (call) => (call[0] as CartItem[]).some(i => i.status === 'error'),
       );
       expect(errorCall).toBeDefined();
     });
 
     const errorCall = onUpdateCart.mock.calls.find(
-      ([items]: [CartItem[]]) => items.some(i => i.status === 'error'),
+      (call) => (call[0] as CartItem[]).some(i => i.status === 'error'),
     );
     const errorItem = (errorCall![0] as CartItem[]).find(i => i.id === 'test-1')!;
     expect(errorItem.status).toBe('error');
@@ -253,7 +253,7 @@ describe('handleCheck — unsend a sent item (REMOVE_PART)', () => {
 
     const [, init] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(init.body as string);
-    expect(body.bubble_part_id).toBe('abc');
+    expect(body.part_id).toBe('abc');
   });
 
   it('calls onUpdateCart with status "pending", checked false, bubblePartId undefined on success (200)', async () => {
@@ -266,13 +266,13 @@ describe('handleCheck — unsend a sent item (REMOVE_PART)', () => {
 
     await waitFor(() => {
       const pendingCall = onUpdateCart.mock.calls.find(
-        ([items]: [CartItem[]]) => items.some(i => i.status === 'pending'),
+        (call) => (call[0] as CartItem[]).some(i => i.status === 'pending'),
       );
       expect(pendingCall).toBeDefined();
     });
 
     const pendingCall = onUpdateCart.mock.calls.find(
-      ([items]: [CartItem[]]) => items.some(i => i.status === 'pending'),
+      (call) => (call[0] as CartItem[]).some(i => i.status === 'pending'),
     );
     const pendingItem = (pendingCall![0] as CartItem[]).find(i => i.id === 'test-1')!;
     expect(pendingItem.status).toBe('pending');
@@ -291,13 +291,13 @@ describe('handleCheck — unsend a sent item (REMOVE_PART)', () => {
     await waitFor(() => {
       // After the error path, should see a call setting status back to 'sent' with errorMsg
       const sentWithError = onUpdateCart.mock.calls.find(
-        ([items]: [CartItem[]]) => items.some(i => i.status === 'sent' && i.errorMsg),
+        (call) => (call[0] as CartItem[]).some(i => i.status === 'sent' && i.errorMsg),
       );
       expect(sentWithError).toBeDefined();
     });
 
     const sentWithError = onUpdateCart.mock.calls.find(
-      ([items]: [CartItem[]]) => items.some(i => i.status === 'sent' && i.errorMsg),
+      (call) => (call[0] as CartItem[]).some(i => i.status === 'sent' && i.errorMsg),
     );
     const errorItem = (sentWithError![0] as CartItem[]).find(i => i.id === 'test-1')!;
     expect(errorItem.status).toBe('sent');
@@ -315,13 +315,13 @@ describe('handleCheck — unsend a sent item (REMOVE_PART)', () => {
 
     await waitFor(() => {
       const sentWithError = onUpdateCart.mock.calls.find(
-        ([items]: [CartItem[]]) => items.some(i => i.status === 'sent' && i.errorMsg),
+        (call) => (call[0] as CartItem[]).some(i => i.status === 'sent' && i.errorMsg),
       );
       expect(sentWithError).toBeDefined();
     });
 
     const anyPendingCall = onUpdateCart.mock.calls.find(
-      ([items]: [CartItem[]]) => items.some(i => i.status === 'pending'),
+      (call) => (call[0] as CartItem[]).some(i => i.status === 'pending'),
     );
     expect(anyPendingCall).toBeUndefined();
   });
@@ -357,7 +357,7 @@ describe('handleCheck — skips empty oem', () => {
 
     await new Promise(r => setTimeout(r, 50));
     const sentCall = onUpdateCart.mock.calls.find(
-      ([items]: [CartItem[]]) => items.some(i => i.status === 'sent'),
+      (call) => (call[0] as CartItem[]).some(i => i.status === 'sent'),
     );
     expect(sentCall).toBeUndefined();
   });
@@ -474,7 +474,7 @@ describe('Finish button — flushes pending auto-send parts', () => {
     await new Promise(r => setTimeout(r, 50));
 
     const saveCalls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
-      ([url]: [string]) => url === CONFIG.BUBBLE_API.SAVE_PART,
+      (call) => call[0] === CONFIG.BUBBLE_API.SAVE_PART,
     );
     expect(saveCalls).toHaveLength(1);
     expect(onFinish).toHaveBeenCalledTimes(1);
@@ -492,7 +492,7 @@ describe('Finish button — flushes pending auto-send parts', () => {
     // Wait until the failed send has recorded an 'error' status
     await waitFor(() => {
       const errored = onUpdateCart.mock.calls.some(
-        ([items]: [CartItem[]]) => items.some(i => i.status === 'error'),
+        (call) => (call[0] as CartItem[]).some(i => i.status === 'error'),
       );
       expect(errored).toBe(true);
     });
@@ -610,7 +610,7 @@ describe('Finish button — flushes pending auto-send parts', () => {
 
     await waitFor(() => {
       const saveCalls = (fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
-        ([url]: [string]) => url === CONFIG.BUBBLE_API.SAVE_PART,
+        (call) => call[0] === CONFIG.BUBBLE_API.SAVE_PART,
       );
       expect(saveCalls).toHaveLength(2);
     });
@@ -766,5 +766,49 @@ describe('Manual add part form', () => {
     expect(newCart[0].name).toBe('Air filter');
     expect(newCart[0].oem).toBe('AF-999');
     expect(newCart[0].status).toBe('pending');
+  });
+});
+
+// ── WO panel style (visual unification 12/11) ────────────────────────────────
+
+describe('CartState WO panel style', () => {
+  it('shows the add-from-supplier card', () => {
+    render(<CartState {...defaultProps({ cart: [] })} />);
+    expect(screen.getByText('Add parts from a supplier')).toBeInTheDocument();
+    expect(screen.getByText('Open the supplier page and select the part.')).toBeInTheDocument();
+  });
+
+  it('sent items show a tag', () => {
+    render(<CartState {...defaultProps({ cart: [makeItem({ status: 'sent', checked: true })] })} />);
+    expect(screen.getByText('✓ Sent')).toHaveClass('bg-pq-tag');
+  });
+
+  it('truncates long part names', () => {
+    const name = 'Very long part name '.repeat(8);
+    render(<CartState {...defaultProps({ cart: [makeItem({ name })] })} />);
+    expect(screen.getByText(name.trim(), { normalizer: s => s.trim() })).toHaveClass('truncate');
+  });
+
+  it('footer keeps both actions', () => {
+    render(<CartState {...defaultProps({ cart: [makeItem({})] })} />);
+    expect(screen.getByRole('button', { name: /Clear unsent/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Finish search/ })).toBeInTheDocument();
+  });
+});
+
+describe('CartState — notice outside a supplier page', () => {
+  afterEach(cleanup);
+
+  it('shows no notice by default', () => {
+    render(<CartState {...defaultProps()} />);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('shows the notice and its Cancel calls onDismissNotice', () => {
+    const onDismissNotice = vi.fn();
+    render(<CartState {...defaultProps({ notice: 'Switch to the supplier tab', onDismissNotice })} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Switch to the supplier tab');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onDismissNotice).toHaveBeenCalledTimes(1);
   });
 });

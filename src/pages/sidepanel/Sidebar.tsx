@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Lang, WorkMode, SidebarState, CartItem, Vehicle, Order } from '@types/parts';
+import type { Lang, WorkMode, SidebarState, CartItem, Vehicle, Order } from '@app-types/parts';
 import {
   getAuthStatus, setAuthStatus,
   getLang, setLang,
@@ -10,10 +10,13 @@ import {
   getCart, setCart,
 } from '@lib/storage';
 import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
+import { useT } from '@lib/i18n';
+import { supplierNoticeFor, type SupplierNotice } from '@lib/crop';
 import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
 import { aiPartsToCartItems, mergeCart } from '@lib/cart-utils';
+import { orderForOpenWorkOrder, workModeAfterLogin, shouldReturnToWorkOrder, isRepeatedWorkOrder, shouldShowPanelHeader } from '@lib/autoflex';
 import BubbleIframe from '@components/BubbleIframe';
 import LoginState from '@components/states/LoginState';
 import ScanningState from '@components/states/ScanningState';
@@ -22,6 +25,7 @@ import FallbackState from '@components/states/FallbackState';
 import FinishState from '@components/states/FinishState';
 import VehiclePanel from '@components/panels/VehiclePanel';
 import OrderPanel from '@components/panels/OrderPanel';
+import PillButton from '@components/ui/PillButton';
 
 export default function Sidebar() {
   const [state, setState] = useState<SidebarState>('checking');
@@ -34,10 +38,19 @@ export default function Sidebar() {
   const [cart, setCartState] = useState<CartItem[]>([]);
   const [vehicleExpanded, setVehicleExpanded] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
+  // Crop/Scan clicked outside a supplier page (e.g. on Autoflex): what the panel tells the user
+  const [supplierNotice, setSupplierNotice] = useState<SupplierNotice | null>(null);
   const [scanScreenshot, setScanScreenshot] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [finishOrder, setFinishOrder] = useState<Order | null>(null);
+  // Summary of the finished session, kept after cart/vehicle/order are cleared
+  const [finishSummary, setFinishSummary] = useState<{ sentCount: number; plate: string }>({ sentCount: 0, plate: '' });
   const [loginOverlay, setLoginOverlay] = useState(true);
+  // Autoflex work order open in the active tab (drives the autoflex-panel iframe)
+  const [activeWo, setActiveWo] = useState<string | null>(null);
+  const [woSearch, setWoSearch] = useState(false);
+  const [woPanelHidden, setWoPanelHidden] = useState(false);
+  const t = useT(lang);
   const loginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs to avoid stale closures in event listeners
@@ -51,6 +64,8 @@ export default function Sidebar() {
   vehicleRef.current = vehicle;
   const orderRef = useRef(order);
   orderRef.current = order;
+  const activeWoRef = useRef(activeWo);
+  activeWoRef.current = activeWo;
 
   // Ref to processScan so the chrome.runtime listener always calls the current version
   const processScanRef = useRef<(base64: string, isCrop?: boolean) => Promise<void>>(async () => {});
@@ -75,9 +90,19 @@ export default function Sidebar() {
         setOrderState(storedOrder);
         setCartState(storedCart);
         setAutoflexState(storedAutoflex);
+        orderRef.current = storedOrder;
+        cartRef.current = storedCart;
       } catch {
         setState('login');
       }
+      // After the stored order is loaded, so following the open work order compares against it
+      try {
+        const res = await chrome.runtime.sendMessage({ type: 'get_active_work_order' }) as
+          { workOrderId?: string | null; plate?: string } | undefined;
+        activeWoRef.current = res?.workOrderId ?? null;
+        setActiveWo(res?.workOrderId ?? null);
+        followOpenWorkOrderRef.current(res?.workOrderId ?? null, res?.plate ?? '');
+      } catch {/* background not ready */}
     })();
   }, []);
 
@@ -103,10 +128,64 @@ export default function Sidebar() {
     };
   }, []);
 
+  // ── Follow the work order open in Autoflex ─────────────────────────────────
+  // Scan/crop parts go to the work order open in Autoflex. The extension keeps it while the
+  // user browses supplier tabs (those report no work order), so it is only replaced when
+  // Autoflex opens another one.
+  const followOpenWorkOrder = (workOrderId: string | null, plate = '') => {
+    if (!workOrderId) return;
+    const next = orderForOpenWorkOrder(orderRef.current, workOrderId, plate);
+    const sameOrder = !next || orderRef.current?.id.toLowerCase() === next.id.toLowerCase();
+    if (next) {
+      orderRef.current = next;
+      setOrderState(next);
+      void setOrder(next);
+    }
+    // Same work order and already in order mode: nothing else to do (keep the cart)
+    if (sameOrder && workMode === 'order') return;
+    if (!sameOrder) {
+      cartRef.current = [];
+      setCartState([]);
+      void setCart([]);
+    }
+    setWorkModeState('order');
+    void setWorkMode('order');
+    if (stateRef.current !== 'checking' && stateRef.current !== 'login') {
+      setVehicleExpanded(false);
+      setState('cart');
+    }
+  };
+  const followOpenWorkOrderRef = useRef(followOpenWorkOrder);
+  followOpenWorkOrderRef.current = followOpenWorkOrder;
+
+  // Back on the selection screen with a work order open in Autoflex: show its panel again
+  useEffect(() => {
+    if (shouldReturnToWorkOrder({ state, vehicleExpanded, activeWo })) setWoPanelHidden(false);
+  }, [state, vehicleExpanded, activeWo]);
+
   // ── chrome.runtime message listener ───────────────────────────────────────
   useEffect(() => {
-    const handler = (msg: { type: string; url?: string; imageBase64?: string; error?: string }) => {
+    const handler = (msg: {
+      type: string; url?: string; imageBase64?: string; error?: string;
+      workOrderId?: string | null; plate?: string; search?: boolean;
+    }) => {
+      if (msg.type === 'work_order_active') {
+        // Tab switches re-send the followed work order: keep cart, finish screen and panel search
+        if (isRepeatedWorkOrder(activeWoRef.current, { workOrderId: msg.workOrderId ?? null, search: msg.search })) return;
+        activeWoRef.current = msg.workOrderId ?? null;
+        setActiveWo(msg.workOrderId ?? null);
+        followOpenWorkOrderRef.current(msg.workOrderId ?? null, msg.plate ?? '');
+        setWoSearch(msg.search === true);
+        // Only the banner's "Find" (explicit user action) brings the panel back mid-flow
+        if (msg.workOrderId && msg.search === true) setWoPanelHidden(false);
+        return;
+      }
+      if (msg.type === 'crop_shown') {
+        setSupplierNotice(null);
+        return;
+      }
       if (msg.type === 'crop_ready') {
+        setSupplierNotice(null);
         if (msg.error) {
           setScanError(msg.error);
           setState('scanning');
@@ -149,7 +228,8 @@ export default function Sidebar() {
       const rawLang = msg.language as string;
       const language: Lang = rawLang === 'nl' ? 'nl' : 'en';
       const autoflexConnected = (msg.autoflex_connected as string) === 'yes';
-      const mode: WorkMode = autoflexConnected ? 'order' : 'vehicle';
+      // A work order open in Autoflex keeps order mode (followOpenWorkOrder already set its order)
+      const mode: WorkMode = workModeAfterLogin(autoflexConnected, activeWoRef.current);
 
       setLangState(language);
       setWorkModeState(mode);
@@ -273,6 +353,10 @@ export default function Sidebar() {
   processScanRef.current = processScan;
 
   const handleScan = async () => {
+    // On Autoflex the scan would read the work order itself as parts
+    const notice = supplierNoticeFor('scan', await getCurrentUrl());
+    setSupplierNotice(notice);
+    if (notice) return;
     setState('scanning');
     setScanError(null);
     setScanScreenshot(null);
@@ -302,8 +386,18 @@ export default function Sidebar() {
   };
 
   const handleCrop = () => {
-    void startCrop();
+    void (async () => {
+      // Crop skips Autoflex and waits for a supplier tab: say so, or the click looks dead
+      setSupplierNotice(supplierNoticeFor('crop', await getCurrentUrl()));
+      await startCrop();
+    })();
   };
+
+  const dismissSupplierNotice = () => {
+    if (supplierNotice === 'cropWaiting') void chrome.runtime.sendMessage({ type: 'crop_cancel' }).catch(() => {});
+    setSupplierNotice(null);
+  };
+  const supplierNoticeText = supplierNotice ? t[supplierNotice] : null;
 
   const handleClear = () => {
     setScanError(null);
@@ -316,12 +410,18 @@ export default function Sidebar() {
   };
 
   const handleUpdateCart = async (items: CartItem[]) => {
+    // Keep the ref current right away: handleFinish may read it before React re-renders
+    cartRef.current = items;
     setCartState(items);
     await setCart(items);
   };
 
   const handleFinish = async () => {
     setFinishOrder(orderRef.current);
+    setFinishSummary({
+      sentCount: cartRef.current.filter(i => i.status === 'sent').length,
+      plate: orderRef.current?.plate || vehicleRef.current?.plate || '',
+    });
     setCartState([]);
     setVehicleState(null);
     setOrderState(null);
@@ -351,19 +451,51 @@ export default function Sidebar() {
   // ── Render ─────────────────────────────────────────────────────────────────
   if (state === 'checking' || state === 'login') {
     return (
-      <div className="relative h-full bg-[#F0F0F0]">
+      <div className="relative h-full bg-pq-page">
         <LoginState onLoad={handleLoginIframeLoad} />
         {loginOverlay && (
           <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
-            <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-pq-teal/30 border-t-pq-teal rounded-full animate-spin" />
           </div>
         )}
       </div>
     );
   }
 
+  // Autoflex work order open in the active tab: show the Parts iQ panel for it
+  if (activeWo && !woPanelHidden) {
+    return (
+      <div className="flex flex-col h-screen bg-pq-page">
+        <BubbleIframe
+          key={activeWo}
+          src={buildBubbleUrl('autoflexPanel', { wo: activeWo, search: woSearch ? '1' : undefined })}
+          title="Parts iQ – Autoflex"
+          className="flex-1 w-full"
+        />
+        <div className="shrink-0 border-t border-pq-line bg-white p-2">
+          <PillButton variant="secondary" onClick={() => setWoPanelHidden(true)} className="w-full py-2">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            {t.scanSupplierPage}
+          </PillButton>
+        </div>
+      </div>
+    );
+  }
+
   if (state === 'finish') {
-    return <FinishState lang={lang} workMode={workMode} order={finishOrder} onNewQuote={handleNewQuote} />;
+    return (
+      <FinishState
+        lang={lang}
+        workMode={workMode}
+        order={finishOrder}
+        plate={finishSummary.plate}
+        sentCount={finishSummary.sentCount}
+        onNewQuote={handleNewQuote}
+      />
+    );
   }
 
   // idle / scanning / cart / fallback — all show the panel header
@@ -373,6 +505,7 @@ export default function Sidebar() {
         order={order}
         lang={lang}
         onExpand={() => { setIframeReady(false); setVehicleExpanded(true); setState('idle'); }}
+        onBackToWorkOrder={activeWo ? () => setWoPanelHidden(false) : undefined}
       />
     )
     : (
@@ -388,6 +521,7 @@ export default function Sidebar() {
           setVehicleExpanded(true);
           setState('idle');
         }}
+        onBackToWorkOrder={activeWo ? () => setWoPanelHidden(false) : undefined}
       />
     );
 
@@ -396,7 +530,7 @@ export default function Sidebar() {
   //  when switching between order and vehicle mode)
   if (state === 'idle' && vehicleExpanded) {
     return (
-      <div className={`relative flex flex-col h-screen bg-[#F0F0F0]${!autoflex ? ' pt-5' : ''}`}>
+      <div className={`relative flex flex-col h-screen bg-pq-page${!autoflex ? ' pt-5' : ''}`}>
         <BubbleIframe
           src={buildBubbleUrl('extension')}
           title="Select"
@@ -404,7 +538,7 @@ export default function Sidebar() {
         />
         {!iframeReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-white">
-            <div className="w-8 h-8 border-4 border-[#B3EEE6] border-t-[#00C6B2] rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-pq-teal/30 border-t-pq-teal rounded-full animate-spin" />
           </div>
         )}
       </div>
@@ -412,8 +546,9 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#F0F0F0]">
-      {!vehicleExpanded && panelHeader}
+    <div className="flex flex-col h-screen gap-2 bg-pq-page p-2.5">
+      {/* Header card (plate, back to the work order, change order/vehicle) on every scan/cart screen */}
+      {shouldShowPanelHeader({ vehicleExpanded, activeWo }) && panelHeader}
 
       {state === 'scanning' && (
         <div className="flex-1">
@@ -431,6 +566,8 @@ export default function Sidebar() {
             workMode={workMode}
             onScan={handleScan}
             onCrop={handleCrop}
+            notice={supplierNoticeText}
+            onDismissNotice={dismissSupplierNotice}
             onUpdateCart={handleUpdateCart}
             onFinish={handleFinish}
           />
@@ -451,6 +588,8 @@ export default function Sidebar() {
             }}
             onCrop={handleCrop}
             onClear={handleClear}
+            notice={supplierNoticeText}
+            onDismissNotice={dismissSupplierNotice}
           />
         </div>
       )}
