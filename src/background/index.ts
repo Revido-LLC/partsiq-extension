@@ -221,6 +221,8 @@ async function moveCropTo(tabId: number): Promise<void> {
     if (!canCropOn(tab.url)) return;
     await showCropIn(tabId, armed.lang, !armed.shown);
     await setCropArmed({ ...armed, tabId, shown: true });
+    // The side panel drops its "switch to the supplier tab" notice
+    chrome.runtime.sendMessage({ type: 'crop_shown' }).catch(() => {/* side panel not open */});
   } catch {/* restricted page: wait for the next tab */}
 }
 
@@ -318,6 +320,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ ok: true });
       })();
       return true;
+
+    case 'crop_cancel':
+      // From the side panel: crop was armed on a non-supplier tab and the user gave up
+      void (async () => {
+        const armed = await getCropArmed();
+        if (armed) hideCropIn(armed.tabId);
+        await setCropArmed(null);
+      })();
+      return false;
 
     case 'crop_ready':
       // Esc in a tab cancels the crop everywhere (the side panel handles the message itself)

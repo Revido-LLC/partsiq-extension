@@ -795,3 +795,20 @@ describe('CartState WO panel style', () => {
     expect(screen.getByRole('button', { name: /Finish search/ })).toBeInTheDocument();
   });
 });
+
+describe('CartState — notice outside a supplier page', () => {
+  afterEach(cleanup);
+
+  it('shows no notice by default', () => {
+    render(<CartState {...defaultProps()} />);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('shows the notice and its Cancel calls onDismissNotice', () => {
+    const onDismissNotice = vi.fn();
+    render(<CartState {...defaultProps({ notice: 'Switch to the supplier tab', onDismissNotice })} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Switch to the supplier tab');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onDismissNotice).toHaveBeenCalledTimes(1);
+  });
+});

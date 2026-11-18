@@ -11,6 +11,7 @@ import {
 } from '@lib/storage';
 import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
 import { useT } from '@lib/i18n';
+import { supplierNoticeFor, type SupplierNotice } from '@lib/crop';
 import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
 import { extractPartsFromScreenshot } from '@lib/ai';
@@ -37,6 +38,8 @@ export default function Sidebar() {
   const [cart, setCartState] = useState<CartItem[]>([]);
   const [vehicleExpanded, setVehicleExpanded] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
+  // Crop/Scan clicked outside a supplier page (e.g. on Autoflex): what the panel tells the user
+  const [supplierNotice, setSupplierNotice] = useState<SupplierNotice | null>(null);
   const [scanScreenshot, setScanScreenshot] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [finishOrder, setFinishOrder] = useState<Order | null>(null);
@@ -177,7 +180,12 @@ export default function Sidebar() {
         if (msg.workOrderId && msg.search === true) setWoPanelHidden(false);
         return;
       }
+      if (msg.type === 'crop_shown') {
+        setSupplierNotice(null);
+        return;
+      }
       if (msg.type === 'crop_ready') {
+        setSupplierNotice(null);
         if (msg.error) {
           setScanError(msg.error);
           setState('scanning');
@@ -345,6 +353,10 @@ export default function Sidebar() {
   processScanRef.current = processScan;
 
   const handleScan = async () => {
+    // On Autoflex the scan would read the work order itself as parts
+    const notice = supplierNoticeFor('scan', await getCurrentUrl());
+    setSupplierNotice(notice);
+    if (notice) return;
     setState('scanning');
     setScanError(null);
     setScanScreenshot(null);
@@ -374,8 +386,18 @@ export default function Sidebar() {
   };
 
   const handleCrop = () => {
-    void startCrop();
+    void (async () => {
+      // Crop skips Autoflex and waits for a supplier tab: say so, or the click looks dead
+      setSupplierNotice(supplierNoticeFor('crop', await getCurrentUrl()));
+      await startCrop();
+    })();
   };
+
+  const dismissSupplierNotice = () => {
+    if (supplierNotice === 'cropWaiting') void chrome.runtime.sendMessage({ type: 'crop_cancel' }).catch(() => {});
+    setSupplierNotice(null);
+  };
+  const supplierNoticeText = supplierNotice ? t[supplierNotice] : null;
 
   const handleClear = () => {
     setScanError(null);
@@ -544,6 +566,8 @@ export default function Sidebar() {
             workMode={workMode}
             onScan={handleScan}
             onCrop={handleCrop}
+            notice={supplierNoticeText}
+            onDismissNotice={dismissSupplierNotice}
             onUpdateCart={handleUpdateCart}
             onFinish={handleFinish}
           />
@@ -564,6 +588,8 @@ export default function Sidebar() {
             }}
             onCrop={handleCrop}
             onClear={handleClear}
+            notice={supplierNoticeText}
+            onDismissNotice={dismissSupplierNotice}
           />
         </div>
       )}

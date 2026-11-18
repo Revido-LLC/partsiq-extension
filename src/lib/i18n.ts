@@ -37,6 +37,8 @@ const T = {
     backToWorkOrder: 'Back to work order',
     addFromSupplierTitle: 'Add parts from a supplier',
     addFromSupplierHint: 'Open the supplier page and select the part.',
+    cropWaiting: 'Crop is ready. Switch to the supplier tab and drag over the part (Esc cancels).',
+    scanNeedsSupplier: 'This is not a supplier page. Open the supplier page in this window and click Scan page there.',
     removeUnsentConfirm: (count: number) =>
       `Remove ${count} unsent part${count === 1 ? '' : 's'}?`,
   },
@@ -76,6 +78,8 @@ const T = {
     backToWorkOrder: 'Terug naar werkorder',
     addFromSupplierTitle: 'Onderdelen van een leverancier toevoegen',
     addFromSupplierHint: 'Open de pagina van de leverancier en selecteer het onderdeel.',
+    cropWaiting: 'Uitsnede staat klaar. Ga naar het tabblad van de leverancier en sleep over het onderdeel (Esc annuleert).',
+    scanNeedsSupplier: 'Dit is geen leverancierspagina. Open de pagina van de leverancier in dit venster en klik daar op Pagina scannen.',
     removeUnsentConfirm: (count: number) =>
       `${count} niet-verzonden onderdeel${count === 1 ? '' : 'en'} verwijderen?`,
   },

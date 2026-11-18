@@ -12,9 +12,12 @@ interface Props {
   onCrop: () => void;
   onScan: () => void;
   onClear: () => void;
+  /** Shown under the hint when Crop/Scan was clicked outside a supplier page */
+  notice?: string | null;
+  onDismissNotice?: () => void;
 }
 
-export default function FallbackState({ lang, cart, onAddManual, onCrop, onScan, onClear }: Props) {
+export default function FallbackState({ lang, cart, onAddManual, onCrop, onScan, onClear, notice, onDismissNotice }: Props) {
   const t = useT(lang);
   const [showManualForm, setShowManualForm] = useState(false);
 
@@ -51,6 +54,16 @@ export default function FallbackState({ lang, cart, onAddManual, onCrop, onScan,
       <Card className="shrink-0">
         <span className="text-sm font-semibold text-black">{t.addFromSupplierTitle}</span>
         <span className="text-[13px] font-medium text-pq-muted">{t.noPartsFound}</span>
+        {notice && (
+          <div role="status" className="flex items-start gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[12px] font-medium text-amber-800">
+            <span className="flex-1">{notice}</span>
+            {onDismissNotice && (
+              <button type="button" onClick={onDismissNotice} className="shrink-0 underline hover:text-amber-950">
+                {t.cancel}
+              </button>
+            )}
+          </div>
+        )}
         <div className="flex gap-2 pt-0.5">
           <PillButton variant="primary" onClick={onCrop} className="flex-1">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

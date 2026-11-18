@@ -14,13 +14,16 @@ interface Props {
   workMode: WorkMode;
   onScan: () => void;
   onCrop: () => void;
+  /** Shown under the hint when Crop/Scan was clicked outside a supplier page */
+  notice?: string | null;
+  onDismissNotice?: () => void;
   onUpdateCart: (items: CartItem[]) => Promise<void>;
   onFinish: () => void;
 }
 
 export default function CartState({
   lang, cart, vehicle, order, workMode,
-  onScan, onCrop, onUpdateCart, onFinish,
+  onScan, onCrop, notice, onDismissNotice, onUpdateCart, onFinish,
 }: Props) {
   const t = useT(lang);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -285,6 +288,16 @@ export default function CartState({
       <Card className="shrink-0">
         <span className="text-sm font-semibold text-black">{t.addFromSupplierTitle}</span>
         <span className="text-[13px] font-medium text-pq-muted">{t.addFromSupplierHint}</span>
+        {notice && (
+          <div role="status" className="flex items-start gap-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[12px] font-medium text-amber-800">
+            <span className="flex-1">{notice}</span>
+            {onDismissNotice && (
+              <button type="button" onClick={onDismissNotice} className="shrink-0 underline hover:text-amber-950">
+                {t.cancel}
+              </button>
+            )}
+          </div>
+        )}
         <div className="flex gap-2 pt-0.5">
           <PillButton variant="primary" onClick={onCrop} className="flex-1">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
