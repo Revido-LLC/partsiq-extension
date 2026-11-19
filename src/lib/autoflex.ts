@@ -157,6 +157,24 @@ export function isRepeatedWorkOrder(
   return (current ?? '').toLowerCase() === (msg.workOrderId ?? '').toLowerCase();
 }
 
+/** How long a banner "Find" waits for the side panel to open and pick it up. */
+export const PENDING_SEARCH_TTL_MS = 30_000;
+
+/**
+ * The banner's "Find" opens the side panel and asks it to search, but the panel is still loading
+ * and misses that broadcast. The background keeps the request; the panel takes it on load when it
+ * is for the work order it opens on and still fresh.
+ */
+export function takePendingSearch(
+  pending: { workOrderId: string; at: number } | undefined,
+  workOrderId: string | null,
+  now: number,
+): boolean {
+  if (!pending || !workOrderId) return false;
+  if (pending.workOrderId.toLowerCase() !== workOrderId.toLowerCase()) return false;
+  return now - pending.at <= PENDING_SEARCH_TTL_MS;
+}
+
 /** A tab that reloads or navigates away no longer shows its work order (its banner re-reports it). */
 export function shouldForgetTabWorkOrder(info: { status?: string }, hasWorkOrder: boolean): boolean {
   return hasWorkOrder && info.status === 'loading';

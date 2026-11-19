@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder, isRepeatedWorkOrder, shouldForgetTabWorkOrder, shouldShowPanelHeader, autoflexContentScriptFiles } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder, isRepeatedWorkOrder, takePendingSearch, PENDING_SEARCH_TTL_MS, shouldForgetTabWorkOrder, shouldShowPanelHeader, autoflexContentScriptFiles } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -172,6 +172,20 @@ describe('isRepeatedWorkOrder', () => {
     expect(isRepeatedWorkOrder('WO-A', { workOrderId: 'WO-B' })).toBe(false);
     expect(isRepeatedWorkOrder('WO-A', { workOrderId: null })).toBe(false);
     expect(isRepeatedWorkOrder(null, { workOrderId: null })).toBe(true);
+  });
+});
+
+describe('takePendingSearch', () => {
+  const now = 1_000_000;
+  it('hands the banner search to the panel that opens for the same work order', () =>
+    expect(takePendingSearch({ workOrderId: 'WO-A', at: now - 2000 }, 'wo-a', now)).toBe(true));
+  it('ignores a search for another work order', () =>
+    expect(takePendingSearch({ workOrderId: 'WO-A', at: now }, 'WO-B', now)).toBe(false));
+  it('ignores a stale search (panel opened much later by hand)', () =>
+    expect(takePendingSearch({ workOrderId: 'WO-A', at: now - PENDING_SEARCH_TTL_MS - 1 }, 'WO-A', now)).toBe(false));
+  it('handles no pending search or no work order', () => {
+    expect(takePendingSearch(undefined, 'WO-A', now)).toBe(false);
+    expect(takePendingSearch({ workOrderId: 'WO-A', at: now }, null, now)).toBe(false);
   });
 });
 

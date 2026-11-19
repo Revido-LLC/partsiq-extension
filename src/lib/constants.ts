@@ -36,5 +36,7 @@ export const CONFIG = {
     WORK_ORDER_PLATES: 'partsiq_work_order_plates',
     /** chrome.storage.session: id of the last Autoflex tab that showed a work order */
     LAST_AUTOFLEX_TAB: 'partsiq_last_autoflex_tab',
+    /** chrome.storage.session: { workOrderId, at } — banner "Find" waiting for the side panel to open */
+    PENDING_SEARCH: 'partsiq_pending_search',
   },
 } as const;

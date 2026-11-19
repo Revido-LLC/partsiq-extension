@@ -49,6 +49,8 @@ export default function Sidebar() {
   // Autoflex work order open in the active tab (drives the autoflex-panel iframe)
   const [activeWo, setActiveWo] = useState<string | null>(null);
   const [woSearch, setWoSearch] = useState(false);
+  /** Bumped by each banner "Find": remounts the panel iframe so its auto-search runs again */
+  const [searchRun, setSearchRun] = useState(0);
   const [woPanelHidden, setWoPanelHidden] = useState(false);
   const t = useT(lang);
   const loginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,9 +100,11 @@ export default function Sidebar() {
       // After the stored order is loaded, so following the open work order compares against it
       try {
         const res = await chrome.runtime.sendMessage({ type: 'get_active_work_order' }) as
-          { workOrderId?: string | null; plate?: string } | undefined;
+          { workOrderId?: string | null; plate?: string; search?: boolean } | undefined;
         activeWoRef.current = res?.workOrderId ?? null;
         setActiveWo(res?.workOrderId ?? null);
+        // Opened by the banner's "Find": its search broadcast arrived before this panel listened
+        if (res?.search === true) setWoSearch(true);
         followOpenWorkOrderRef.current(res?.workOrderId ?? null, res?.plate ?? '');
       } catch {/* background not ready */}
     })();
@@ -177,7 +181,12 @@ export default function Sidebar() {
         followOpenWorkOrderRef.current(msg.workOrderId ?? null, msg.plate ?? '');
         setWoSearch(msg.search === true);
         // Only the banner's "Find" (explicit user action) brings the panel back mid-flow
-        if (msg.workOrderId && msg.search === true) setWoPanelHidden(false);
+        if (msg.workOrderId && msg.search === true) {
+          setWoPanelHidden(false);
+          // Reload the panel even if it already had search=1, so every "Find" searches
+          setSearchRun(n => n + 1);
+          void chrome.runtime.sendMessage({ type: 'search_received' }).catch(() => {});
+        }
         return;
       }
       if (msg.type === 'crop_shown') {
@@ -467,7 +476,7 @@ export default function Sidebar() {
     return (
       <div className="flex flex-col h-screen bg-pq-page">
         <BubbleIframe
-          key={activeWo}
+          key={`${activeWo}-${searchRun}`}
           src={buildBubbleUrl('autoflexPanel', { wo: activeWo, search: woSearch ? '1' : undefined })}
           title="Parts iQ – Autoflex"
           className="flex-1 w-full"
