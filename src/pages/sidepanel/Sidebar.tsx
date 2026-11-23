@@ -10,7 +10,7 @@ import {
   getCart, setCart,
 } from '@lib/storage';
 import { useBubbleMessages, buildBubbleUrl } from '@lib/iframe';
-import { useT } from '@lib/i18n';
+import { useT, parseLang } from '@lib/i18n';
 import { supplierNoticeFor, type SupplierNotice } from '@lib/crop';
 import { captureScreenshot } from '@lib/screenshot';
 import { compressImage } from '@lib/image-utils';
@@ -234,8 +234,7 @@ export default function Sidebar() {
         clearTimeout(loginTimerRef.current);
         loginTimerRef.current = null;
       }
-      const rawLang = msg.language as string;
-      const language: Lang = rawLang === 'nl' ? 'nl' : 'en';
+      const language = parseLang(msg.language);
       const autoflexConnected = (msg.autoflex_connected as string) === 'yes';
       // A work order open in Autoflex keeps order mode (followOpenWorkOrder already set its order)
       const mode: WorkMode = workModeAfterLogin(autoflexConnected, activeWoRef.current);
@@ -262,6 +261,15 @@ export default function Sidebar() {
     }
 
     if (msg.type === 'partsiq:login_failed') {
+      return;
+    }
+
+    // The work order panel reports the user's language on load and whenever it changes,
+    // so the extension's own screens (crop, finish) follow it without reopening the panel
+    if (msg.type === 'partsiq:language') {
+      const language = parseLang(msg.language);
+      setLangState(language);
+      void setLang(language);
       return;
     }
 
