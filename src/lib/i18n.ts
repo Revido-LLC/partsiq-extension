@@ -87,6 +87,11 @@ const T = {
 
 export type Translations = typeof T.en;
 
+/** Language value sent by the Bubble app: only the exact "nl" is Dutch, anything else is English. */
+export function parseLang(raw: unknown): Lang {
+  return raw === 'nl' ? 'nl' : 'en';
+}
+
 export function useT(lang: Lang): Translations {
   return (T[lang] ?? T.en) as unknown as Translations;
 }

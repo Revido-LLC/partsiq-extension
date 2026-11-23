@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { useT } from '@lib/i18n';
+import { useT, parseLang } from '@lib/i18n';
 
 describe('useT', () => {
   // ── Language selection ─────────────────────────────────────────────────────
@@ -125,5 +125,14 @@ describe('useT', () => {
     it('en and nl translations are distinct objects (not the same reference)', () => {
       expect(useT('en')).not.toBe(useT('nl'));
     });
+  });
+});
+
+describe('parseLang', () => {
+  it('returns nl only for the exact value "nl"', () => {
+    expect(parseLang('nl')).toBe('nl');
+  });
+  it('falls back to en for anything else', () => {
+    for (const v of ['en', 'NL', 'Dutch', '', undefined, null, 42]) expect(parseLang(v)).toBe('en');
   });
 });

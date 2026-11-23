@@ -1,7 +1,7 @@
 import { CONFIG } from '@lib/constants';
 import { dataUrlToBlob } from '@lib/image-utils';
 import { canCropOn } from '@lib/crop';
-import { pickOpenWorkOrder, shouldForgetTabWorkOrder, autoflexContentScriptFiles, isAutoflexUrl } from '@lib/autoflex';
+import { pickOpenWorkOrder, shouldForgetTabWorkOrder, autoflexContentScriptFiles, isAutoflexUrl, takePendingSearch } from '@lib/autoflex';
 
 // After an install/update/reload the Autoflex tabs still run the old (orphaned) content script,
 // which can no longer report a closed work order. Inject the new one so it takes over.
@@ -103,9 +103,12 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
     const opening = chrome.sidePanel.open({ tabId });
     const workOrderId = typeof msg.workOrderId === 'string' ? msg.workOrderId : null;
     if (workOrderId) {
+      const search = msg.search === true;
       void setTabWorkOrder(tabId, workOrderId)
         .then(() => setLastAutoflexTab(tabId))
-        .then(() => broadcastWorkOrder(workOrderId, msg.search === true));
+        // Kept for a panel that is still loading and misses the broadcast below
+        .then(() => (search ? setPendingSearch(workOrderId) : undefined))
+        .then(() => broadcastWorkOrder(workOrderId, search));
     }
     opening
       .then(() => sendResponse({ ok: true }))
@@ -115,6 +118,22 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, sendResponse) => {
 });
 
 // ── Autoflex work order per tab ─────────────────────────────────────────────
+
+async function setPendingSearch(workOrderId: string | null): Promise<void> {
+  const key = CONFIG.STORAGE_KEYS.PENDING_SEARCH;
+  if (workOrderId) await chrome.storage.session.set({ [key]: { workOrderId, at: Date.now() } });
+  else await chrome.storage.session.remove(key);
+}
+
+/** True once for the banner "Find" that opened the panel on this work order. */
+async function takeSearchFor(workOrderId: string | null): Promise<boolean> {
+  const key = CONFIG.STORAGE_KEYS.PENDING_SEARCH;
+  const data = await chrome.storage.session.get(key);
+  const pending = data[key] as { workOrderId: string; at: number } | undefined;
+  if (!pending) return false;
+  await chrome.storage.session.remove(key);
+  return takePendingSearch(pending, workOrderId, Date.now());
+}
 
 async function getTabWorkOrders(): Promise<Record<string, string>> {
   const key = CONFIG.STORAGE_KEYS.TAB_WORK_ORDERS;
@@ -291,9 +310,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case 'get_active_work_order':
       (async () => {
         const workOrderId = pickOpenWorkOrder(await getTabWorkOrders(), await activeTabId(), await getLastAutoflexTab());
-        sendResponse({ workOrderId, plate: await plateOf(workOrderId) });
+        sendResponse({ workOrderId, plate: await plateOf(workOrderId), search: await takeSearchFor(workOrderId) });
       })();
       return true;
+
+    // An open panel got the banner search live: drop the copy kept for a loading panel
+    case 'search_received':
+      void setPendingSearch(null);
+      return false;
 
     case 'take_screenshot':
       (async () => {
