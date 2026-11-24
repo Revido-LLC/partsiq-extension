@@ -511,6 +511,7 @@ export default function Sidebar() {
         plate={finishSummary.plate}
         sentCount={finishSummary.sentCount}
         onNewQuote={handleNewQuote}
+        onBackToWorkOrder={activeWo ? () => setWoPanelHidden(false) : undefined}
       />
     );
   }

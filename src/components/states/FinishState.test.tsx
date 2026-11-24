@@ -238,3 +238,24 @@ describe('FinishState summary', () => {
     expect(screen.getByText('Parts iQ')).toBeInTheDocument();
   });
 });
+
+// ── Back to the open Autoflex work order (Marc 24/11) ────────────────────────
+
+describe('FinishState back to work order', () => {
+  it('hides the back link when no work order is open', () => {
+    render(<FinishState lang="en" workMode="order" order={ORDER} onNewQuote={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /Back to work order/ })).toBeNull();
+  });
+
+  it('goes back to the work order panel when one is open', () => {
+    const back = vi.fn();
+    render(<FinishState lang="en" workMode="order" order={ORDER} onNewQuote={vi.fn()} onBackToWorkOrder={back} />);
+    fireEvent.click(screen.getByRole('button', { name: /Back to work order/ }));
+    expect(back).toHaveBeenCalledOnce();
+  });
+
+  it('uses the Dutch label', () => {
+    render(<FinishState lang="nl" workMode="order" order={ORDER} onNewQuote={vi.fn()} onBackToWorkOrder={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /Terug naar werkorder/ })).toBeInTheDocument();
+  });
+});

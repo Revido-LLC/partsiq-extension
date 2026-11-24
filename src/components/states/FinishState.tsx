@@ -14,9 +14,11 @@ interface Props {
   /** Parts sent in the finished session (snapshot) */
   sentCount?: number;
   onNewQuote: () => void;
+  /** Set only when an Autoflex work order is open: link back to its panel */
+  onBackToWorkOrder?: () => void;
 }
 
-export default function FinishState({ lang, workMode, order, plate, sentCount = 0, onNewQuote }: Props) {
+export default function FinishState({ lang, workMode, order, plate, sentCount = 0, onNewQuote, onBackToWorkOrder }: Props) {
   const t = useT(lang);
   const dashUrl = workMode === 'order' && order
     ? `${CONFIG.BUBBLE_BASE_URL}/dash/autoflex//sourced-parts?work-order-id=${order.id}`
@@ -26,10 +28,19 @@ export default function FinishState({ lang, workMode, order, plate, sentCount = 
 
   return (
     <div className="flex flex-col h-full gap-2 bg-pq-page p-2.5">
-      <Card className="shrink-0 flex-row items-center gap-2">
-        <span className="text-base font-bold text-black">Parts iQ</span>
-        <span className="flex-1" />
-        <Plate plate={plate} />
+      <Card className="shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-base font-bold text-black">Parts iQ</span>
+          <span className="flex-1" />
+          <Plate plate={plate} />
+        </div>
+        {onBackToWorkOrder && (
+          <div className="flex items-center">
+            <button type="button" onClick={onBackToWorkOrder} className="text-[13px] font-medium text-pq-teal hover:underline">
+              ← {t.backToWorkOrder}
+            </button>
+          </div>
+        )}
       </Card>
 
       <Card className="items-center gap-2.5 px-4 py-6 text-center">
