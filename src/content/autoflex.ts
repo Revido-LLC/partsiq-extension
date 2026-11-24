@@ -4,7 +4,7 @@
 // isolated in a Shadow DOM) and relays banner messages to the background.
 // The banner resolves the order number to the Autoflex GUID and posts it back.
 import { CONFIG } from '@lib/constants';
-import { findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter } from '@lib/autoflex';
+import { findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, bannerHeightFor } from '@lib/autoflex';
 
 const DEFAULT_HEIGHT = 48;
 const HIDDEN_KEY = (nr: string) => `partsiq_banner_hidden_${nr}`;
@@ -13,6 +13,8 @@ let currentNr: string | null = null;
 let host: HTMLDivElement | null = null;
 let iframe: HTMLIFrameElement | null = null;
 let bannerHeight = 0;
+/** The user closed the banner for this order: it keeps loading, invisible, to report the work order */
+let dismissed = false;
 const applyOffset = createPageOffsetter(document);
 
 function bannerUrl(nr: string): string {
@@ -26,7 +28,7 @@ function sendWorkOrder(workOrderId: string | null, plate = ''): void {
 
 function setHeight(height: number): void {
   if (!host || !iframe) return;
-  const h = Math.max(0, Math.min(height, 200));
+  const h = bannerHeightFor(dismissed, height);
   iframe.style.height = `${h}px`;
   bannerHeight = h;
   applyOffset(h);
@@ -43,7 +45,7 @@ function removeBanner(): void {
 }
 
 function showBanner(nr: string): void {
-  if (sessionStorage.getItem(HIDDEN_KEY(nr))) return;
+  dismissed = !!sessionStorage.getItem(HIDDEN_KEY(nr));
   if (!host) {
     host = document.createElement('div');
     host.id = 'partsiq-banner-host';
@@ -113,6 +115,7 @@ window.addEventListener('message', (event) => {
       break;
     case 'partsiq:banner_hide':
       if (currentNr) sessionStorage.setItem(HIDDEN_KEY(currentNr), '1');
+      dismissed = true;
       removeBanner();
       break;
     case 'partsiq:banner_count':

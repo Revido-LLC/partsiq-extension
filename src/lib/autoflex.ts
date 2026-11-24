@@ -61,6 +61,19 @@ export function findOpenOrderPlate(
   return parseOrderPlate(findOpenOrderHeader(root, isVisible));
 }
 
+/** Tallest the banner may get, in px. */
+export const BANNER_MAX_HEIGHT = 200;
+
+/**
+ * Height to give the banner iframe. A banner the user dismissed (✕) still loads, because it is
+ * the banner that resolves the open order number to the work order the side panel follows —
+ * it just stays invisible.
+ */
+export function bannerHeightFor(dismissed: boolean, requested: number): number {
+  if (dismissed) return 0;
+  return Math.max(0, Math.min(requested, BANNER_MAX_HEIGHT));
+}
+
 /**
  * Returns a function that pushes the Autoflex page down by `h` px (0 = restore).
  * Servoy lays the whole app out in #mainForm (position:absolute; inset:0), so body
