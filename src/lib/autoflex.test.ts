@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder, isRepeatedWorkOrder, takePendingSearch, PENDING_SEARCH_TTL_MS, shouldForgetTabWorkOrder, shouldShowPanelHeader, autoflexContentScriptFiles } from '@lib/autoflex';
+import { isAutoflexUrl, parseOrderNumber, parseOrderPlate, findOpenOrderNumber, findOpenOrderPlate, createPageOffsetter, orderForOpenWorkOrder, workModeAfterLogin, pickOpenWorkOrder, shouldReturnToWorkOrder, isRepeatedWorkOrder, takePendingSearch, PENDING_SEARCH_TTL_MS, shouldForgetTabWorkOrder, shouldShowPanelHeader, autoflexContentScriptFiles, bannerHeightFor } from '@lib/autoflex';
 
 describe('isAutoflexUrl', () => {
   it('accepts the Autoflex hosts (test and production)', () => {
@@ -217,4 +217,14 @@ describe('autoflexContentScriptFiles', () => {
   it('returns nothing when there is no Autoflex entry', () =>
     expect(autoflexContentScriptFiles([scripts[0]])).toEqual([]));
   it('handles a missing list', () => expect(autoflexContentScriptFiles(undefined)).toEqual([]));
+});
+
+describe('bannerHeightFor', () => {
+  it('shows the banner at the height it asks for', () => expect(bannerHeightFor(false, 48)).toBe(48));
+  it('keeps a dismissed banner invisible: it still loads to report the work order', () =>
+    expect(bannerHeightFor(true, 48)).toBe(0));
+  it('clamps odd heights', () => {
+    expect(bannerHeightFor(false, 900)).toBe(200);
+    expect(bannerHeightFor(false, -5)).toBe(0);
+  });
 });
